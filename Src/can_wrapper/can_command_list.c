@@ -7,7 +7,7 @@
  * @date March 16, 2024
  */
 
-#include "can_command_list.h"
+#include "util/can_wrapper/can_command_list.h"
 
 const CmdConfig cmd_configs[0x70] = {
 		//////////////////////////////////////////////////////////////

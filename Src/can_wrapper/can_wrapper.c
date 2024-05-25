@@ -7,9 +7,9 @@
  * @date February 28, 2024
  */
 
-#include <can_queue.h>
-#include <can_wrapper.h>
-#include "tx_cache.h"
+#include "util/can_wrapper/can_wrapper.h"
+#include "util/can_wrapper/can_queue.h"
+#include "util/can_wrapper/tx_cache.h"
 #include <stddef.h>
 
 #define ACK_MASK       0b00000000001

@@ -12,7 +12,7 @@
 #ifndef CAN_WRAPPER_MODULE_INC_CAN_QUEUE_H_
 #define CAN_WRAPPER_MODULE_INC_CAN_QUEUE_H_
 
-#include <can_message.h>
+#include "can_message.h"
 #include <stdbool.h>
 #include <sys/_stdint.h>
 
