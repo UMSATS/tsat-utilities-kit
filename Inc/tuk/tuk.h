@@ -10,5 +10,7 @@
 #define TSAT_UTILITIES_KIT_INC_TUK_TUK_H_
 
 #include "can_wrapper.h"
+#include "error_context.h"
+#include "log.h"
 
 #endif /* TSAT_UTILITIES_KIT_INC_TUK_TUK_H_ */
