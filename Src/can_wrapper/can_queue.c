@@ -9,7 +9,7 @@
  * @date February 12, 2024
  */
 
-#include "util/can_wrapper/can_queue.h"
+#include <tuk/can_wrapper/can_queue.h>
 
 CANQueue CANQueue_Create()
 {

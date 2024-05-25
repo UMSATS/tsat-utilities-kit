@@ -7,10 +7,10 @@
  * @date February 28, 2024
  */
 
-#include "util/can_wrapper/can_wrapper.h"
-#include "util/can_wrapper/can_queue.h"
-#include "util/can_wrapper/tx_cache.h"
 #include <stddef.h>
+#include <tuk/can_wrapper/can_queue.h>
+#include <tuk/can_wrapper/can_wrapper.h>
+#include <tuk/can_wrapper/tx_cache.h>
 
 #define ACK_MASK       0b00000000001
 #define RECIPIENT_MASK 0b00000000110
