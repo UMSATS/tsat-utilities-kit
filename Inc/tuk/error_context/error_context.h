@@ -61,9 +61,9 @@ void ErrorContext_Pop_Buffer();
 bool ErrorBuffer_Has_Error(ErrorBuffer *error_buffer);
 void ErrorBuffer_Clear(ErrorBuffer *error_buffer);
 
-// internal function used by PUSH_ERROR macro.
-void ErrorContext_Push_Error_(int n, ...);
+// internal function used by PUT_ERROR macro.
+void ErrorContext_Put_Error_(int n, ...);
 
-#define PUSH_ERROR(...)ErrorContext_Push_Error_(NUM_ARGS(__VA_ARGS__),__VA_ARGS__)
+#define PUT_ERROR(...)ErrorContext_Put_Error_(NUM_ARGS(__VA_ARGS__),__VA_ARGS__)
 
 #endif /* INC_ERROR_CONTEXT_H_ */

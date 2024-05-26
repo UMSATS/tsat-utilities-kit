@@ -23,7 +23,7 @@ typedef struct
 
 static ErrorContext s_context;
 
-static bool push_byte(ErrorBuffer *buffer, uint8_t byte);
+static bool put_byte(ErrorBuffer *buffer, uint8_t byte);
 
 #define LOG_SUBJECT "ErrorContext"
 
@@ -59,7 +59,7 @@ void ErrorContext_Pop_Buffer()
 	s_context.buffer_stack_size--;
 }
 
-void ErrorContext_Push_Error_(int n, ...)
+void ErrorContext_Put_Error_(int n, ...)
 {
 	if (s_context.buffer_stack_size == 0)
 	{
@@ -77,19 +77,19 @@ void ErrorContext_Push_Error_(int n, ...)
 
 	uint8_t error_code = (uint8_t)va_arg(va_ptr, int);
 
-	success = push_byte(buffer, error_code);
+	success = put_byte(buffer, error_code);
 
 	int i = 0;
 	while (success && i < n-1)
 	{
-		success = push_byte(buffer, (uint8_t)va_arg(va_ptr, int));
+		success = put_byte(buffer, (uint8_t)va_arg(va_ptr, int));
 		i++;
 	}
 
 	va_end(va_ptr);
 }
 
-static bool push_byte(ErrorBuffer *buffer, uint8_t byte)
+static bool put_byte(ErrorBuffer *buffer, uint8_t byte)
 {
 	if (buffer->size == ERROR_BUFFER_CAPACITY)
 	{
