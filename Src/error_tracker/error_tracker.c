@@ -1,11 +1,11 @@
 /*
- * error_context.c
+ * error_tracker.c
  *
  *  Created on: Jan 15, 2024
  *      Author: Logan Furedi
  */
 
-#include "tuk/error_context.h"
+#include "tuk/error_tracker.h"
 #include "tuk/log.h"
 
 #include <string.h>
@@ -19,26 +19,26 @@ typedef struct
 {
 	ErrorBuffer *buffer_stack[BUFFER_STACK_CAPACITY];
 	size_t buffer_stack_size;
-} ErrorContext;
+} ErrorTracker;
 
-static ErrorContext s_context;
+static ErrorTracker s_context;
 
 static bool put_byte(ErrorBuffer *buffer, uint8_t byte);
 
-#define LOG_SUBJECT "ErrorContext"
+#define LOG_SUBJECT "ErrorTracker"
 
-void ErrorContext_Init(ErrorBuffer *init_error_buffer)
+void ErrorTracker_Init(ErrorBuffer *init_error_buffer)
 {
 	s_context.buffer_stack_size = 0;
 
-	ErrorContext_Push_Buffer(init_error_buffer);
+	ErrorTracker_Push_Buffer(init_error_buffer);
 }
 
-void ErrorContext_Push_Buffer(ErrorBuffer *error_buffer)
+void ErrorTracker_Push_Buffer(ErrorBuffer *error_buffer)
 {
 	if (s_context.buffer_stack_size == BUFFER_STACK_CAPACITY)
 	{
-		LOG_ERROR("context stack overflow.");
+		LOG_ERROR("buffer stack overflow.");
 		return;
 	}
 
@@ -48,18 +48,18 @@ void ErrorContext_Push_Buffer(ErrorBuffer *error_buffer)
 	ErrorBuffer_Clear(error_buffer);
 }
 
-void ErrorContext_Pop_Buffer()
+void ErrorTracker_Pop_Buffer()
 {
 	if (s_context.buffer_stack_size <= 1)
 	{
-		LOG_ERROR("context stack underflow.");
+		LOG_ERROR("buffer stack underflow.");
 		return;
 	}
 
 	s_context.buffer_stack_size--;
 }
 
-void ErrorContext_Put_Error_(int n, ...)
+void ErrorTracker_Put_Error_(int n, ...)
 {
 	if (s_context.buffer_stack_size == 0)
 	{

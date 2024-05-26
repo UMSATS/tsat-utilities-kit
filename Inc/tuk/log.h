@@ -8,7 +8,7 @@
 #ifndef INC_LOG_H_
 #define INC_LOG_H_
 
-#include "error_context.h"
+#include "error_tracker.h"
 
 #include <stdio.h>
 

@@ -1,5 +1,5 @@
 /*
- * error_context.h
+ * error_tracker.h
  *
  *  Created on: Jan 15, 2024
  *      Author: Logan Furedi
@@ -54,16 +54,16 @@ typedef struct
 	size_t size;
 } ErrorBuffer;
 
-void ErrorContext_Init(ErrorBuffer *init_errror_buffer);
-void ErrorContext_Push_Buffer(ErrorBuffer *error_buffer);
-void ErrorContext_Pop_Buffer();
+void ErrorTracker_Init(ErrorBuffer *init_error_buffer);
+void ErrorTracker_Push_Buffer(ErrorBuffer *error_buffer);
+void ErrorTracker_Pop_Buffer();
 
 bool ErrorBuffer_Has_Error(ErrorBuffer *error_buffer);
 void ErrorBuffer_Clear(ErrorBuffer *error_buffer);
 
 // internal function used by PUT_ERROR macro.
-void ErrorContext_Put_Error_(int n, ...);
+void ErrorTracker_Put_Error_(int n, ...);
 
-#define PUT_ERROR(...)ErrorContext_Put_Error_(NUM_ARGS(__VA_ARGS__),__VA_ARGS__)
+#define PUT_ERROR(...)ErrorTracker_Put_Error_(NUM_ARGS(__VA_ARGS__),__VA_ARGS__)
 
 #endif /* INC_ERROR_CONTEXT_H_ */
