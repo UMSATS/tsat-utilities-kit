@@ -63,7 +63,7 @@ void ErrorTracker_Put_Error_(int n, ...)
 {
 	if (s_context.buffer_stack_size == 0)
 	{
-		LOG_ERROR("no active context.");
+		LOG_ERROR("no active error buffer.");
 		return;
 	}
 
