@@ -13,7 +13,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 
-#define ERROR_BUFFER_CAPACITY 6
+#define ERROR_BUFFER_CAPACITY 7
 
 typedef struct
 {
