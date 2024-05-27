@@ -1,8 +1,9 @@
-/*
- * log.h
+/**
+ * @file log.h
  *
- *  Created on: Jan 7, 2024
- *      Author: Logan Furedi
+ * @author Logan Furedi <logan.furedi@umsats.ca>
+ *
+ * @date Jan 7, 2024
  */
 
 #ifndef INC_LOG_H_
