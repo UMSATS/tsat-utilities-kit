@@ -3,13 +3,11 @@
  *
  * @author Logan Furedi <logan.furedi@umsats.ca>
  *
- * @date Jan 7, 2024
+ * @date May 27, 2024
  */
 
-#ifndef INC_LOG_H_
-#define INC_LOG_H_
-
-#include "error_tracker.h"
+#ifndef TSAT_UTILITIES_KIT_INC_TUK_DEBUG_LOG_H_
+#define TSAT_UTILITIES_KIT_INC_TUK_DEBUG_LOG_H_
 
 #include <stdio.h>
 
@@ -41,4 +39,4 @@
 
 #endif
 
-#endif /* INC_LOG_H_ */
+#endif /* TSAT_UTILITIES_KIT_INC_TUK_DEBUG_LOG_H_ */
