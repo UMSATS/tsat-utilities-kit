@@ -6,7 +6,7 @@
  */
 
 #include "tuk/error_tracker.h"
-#include "tuk/log.h"
+#include "tuk/debug/log.h"
 
 #include <string.h>
 #include <stdint.h>
@@ -101,14 +101,4 @@ static bool put_byte(ErrorBuffer *buffer, uint8_t byte)
 	buffer->size++;
 
 	return true;
-}
-
-bool ErrorBuffer_Has_Error(ErrorBuffer *error_buffer)
-{
-	return error_buffer->size > 0;
-}
-
-void ErrorBuffer_Clear(ErrorBuffer *error_buffer)
-{
-	error_buffer->size = 0;
 }

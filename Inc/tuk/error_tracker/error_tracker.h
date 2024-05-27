@@ -10,26 +10,12 @@
 #ifndef INC_ERROR_CONTEXT_H_
 #define INC_ERROR_CONTEXT_H_
 
-#include <stdint.h>
-#include <stddef.h>
-#include <stdbool.h>
-
 #include "error_list.h"
-
-#define ERROR_BUFFER_CAPACITY 6
-
-typedef struct
-{
-	uint8_t data[ERROR_BUFFER_CAPACITY]; // buffer containing error data.
-	size_t size;
-} ErrorBuffer;
+#include "error_buffer.h"
 
 void ErrorTracker_Init(ErrorBuffer *init_error_buffer);
 void ErrorTracker_Push_Buffer(ErrorBuffer *error_buffer);
 void ErrorTracker_Pop_Buffer();
-
-bool ErrorBuffer_Has_Error(ErrorBuffer *error_buffer);
-void ErrorBuffer_Clear(ErrorBuffer *error_buffer);
 
 // internal function used by PUT_ERROR macro.
 void ErrorTracker_Put_Error_(int n, ...);
