@@ -74,11 +74,11 @@ typedef struct
 CANWrapper_StatusTypeDef CANWrapper_Init(CANWrapper_InitTypeDef init_struct);
 
 /**
- * @brief               Polls the CAN queue for incoming messages.
+ * @brief               Polls for new events such as new messages or errors.
  *
  * This is the point where callback functions will be triggered.
  */
-CANWrapper_StatusTypeDef CANWrapper_Poll_Messages();
+CANWrapper_StatusTypeDef CANWrapper_Poll_Events();
 
 /**
  * @brief               Sends a message over CAN.

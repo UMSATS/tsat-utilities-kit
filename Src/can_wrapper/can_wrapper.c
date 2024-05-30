@@ -83,12 +83,12 @@ CANWrapper_StatusTypeDef CANWrapper_Init(CANWrapper_InitTypeDef init_struct)
 	return CAN_WRAPPER_HAL_OK;
 }
 
-CANWrapper_StatusTypeDef CANWrapper_Poll_Messages()
+CANWrapper_StatusTypeDef CANWrapper_Poll_Events()
 {
 	if (!s_init) return CAN_WRAPPER_NOT_INITIALISED;
 
+	// Poll incoming message queue.
 	CANQueueItem queue_item;
-
 	while (CANQueue_Dequeue(&s_msg_queue, &queue_item))
 	{
 		if (queue_item.msg.is_ack)
@@ -104,6 +104,7 @@ CANWrapper_StatusTypeDef CANWrapper_Poll_Messages()
 		}
 	}
 
+	// Poll transmission timeout events.
 	// TODO: Needs serious cleaning up.
 	uint32_t counter_value = __HAL_TIM_GET_COUNTER(s_init_struct.htim);
 	uint32_t rcr_value = s_init_struct.htim->Instance->RCR;
