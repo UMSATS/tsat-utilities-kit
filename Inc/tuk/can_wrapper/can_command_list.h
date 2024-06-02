@@ -85,6 +85,8 @@ typedef enum
 	////////////////////////////////////////////
 	CMD_ADCS_SET_MAGNETORQUER_POWER       = 0x40,
 	CMD_ADCS_SET_MAGNETORQUER_DIRECTION,
+	CMD_ADCS_GET_MAGNETIC_FIELD,
+	CMD_ADCS_GET_ANGULAR_VELOCITY,
 	CMD_ADCS_SET_TELEMETRY_INTERVAL,
 
 	////////////////////////////////////////////
