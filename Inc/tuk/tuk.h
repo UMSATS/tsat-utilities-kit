@@ -12,5 +12,6 @@
 #include "can_wrapper.h"
 #include "debug.h"
 #include "error_tracker.h"
+#include "utils.h"
 
 #endif /* TSAT_UTILITIES_KIT_INC_TUK_TUK_H_ */
