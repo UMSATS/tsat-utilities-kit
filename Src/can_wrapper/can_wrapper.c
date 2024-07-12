@@ -156,7 +156,7 @@ static CANWrapper_StatusTypeDef transmit_internal(NodeID recipient, CANMessage *
 				| (is_ack ? ACK_MASK : 0);
 
 	// wait to send CAN message.
-	while (HAL_CAN_GetTxMailboxesFreeLevel(s_init_struct.hcan) == 0){}
+	while (HAL_CAN_GetTxMailboxesFreeLevel(s_init_struct.hcan) == 0){} // TODO: make sure this is safe. If not, limit with loop counter.
 
 	CAN_TxHeaderTypeDef tx_header;
 	tx_header.IDE = CAN_ID_STD;   // use standard identifier.
