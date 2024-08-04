@@ -86,7 +86,7 @@ CANWrapper_StatusTypeDef CANWrapper_Init(CANWrapper_InitTypeDef init_struct)
 	return CAN_WRAPPER_HAL_OK;
 }
 
-CANWrapper_StatusTypeDef CANWrapper_Poll_Events()
+CANWrapper_StatusTypeDef CANWrapper_Poll_Messages()
 {
 	if (!s_init) return CAN_WRAPPER_NOT_INITIALISED;
 
@@ -106,6 +106,13 @@ CANWrapper_StatusTypeDef CANWrapper_Poll_Events()
 			s_init_struct.message_callback(queue_item.msg.msg, queue_item.msg.sender, queue_item.msg.is_ack);
 		}
 	}
+
+	return CAN_WRAPPER_HAL_OK;
+}
+
+CANWrapper_StatusTypeDef CANWrapper_Poll_Errors()
+{
+	if (!s_init) return CAN_WRAPPER_NOT_INITIALISED;
 
 	// Poll transmission timeout events.
 	// TODO: Needs serious cleaning up.
