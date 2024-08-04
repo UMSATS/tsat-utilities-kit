@@ -4,6 +4,7 @@
  * transmission.
  *
  * @author Logan Furedi <logan.furedi@umsats.ca>
+ * @author Arnav Gupta <arnav.gupta@umsats.ca>
  *
  * @date February 27, 2024
  */
@@ -13,6 +14,8 @@
 
 #include "can_command_list.h"
 #include "can_message.h"
+#include "error_queue.h"
+
 #include <stdbool.h>
 #include <stm32l4xx.h>
 #include <stm32l4xx_hal_can.h>
@@ -33,23 +36,6 @@ typedef enum
 	CAN_WRAPPER_FAILED_TO_ENABLE_INTERRUPT,
 	CAN_WRAPPER_FAILED_TO_START_TIMER,
 } CANWrapper_StatusTypeDef;
-
-typedef struct
-{
-	enum
-	{
-		CAN_WRAPPER_ERROR_TIMEOUT = 0,
-		CAN_WRAPPER_ERROR_CAN_TIMEOUT,
-	} error;
-	union
-	{
-		struct {
-			CANMessage msg;
-			NodeID recipient;
-		};
-		// TODO: more error information.
-	};
-} CANWrapper_ErrorInfo;
 
 typedef void (*CANMessageCallback)(CANMessage, NodeID, bool);
 typedef void (*CANErrorCallback)(CANWrapper_ErrorInfo);
@@ -74,11 +60,18 @@ typedef struct
 CANWrapper_StatusTypeDef CANWrapper_Init(CANWrapper_InitTypeDef init_struct);
 
 /**
- * @brief               Polls for new events such as new messages or errors.
+ * @brief               Polls for new messages.
  *
- * This is the point where callback functions will be triggered.
+ * This is the point where message_callback will be triggered.
  */
-CANWrapper_StatusTypeDef CANWrapper_Poll_Events();
+CANWrapper_StatusTypeDef CANWrapper_Poll_Messages();
+
+/**
+ * @brief               Polls for new errors.
+ *
+ * This is the point where error_callback will be triggered.
+ */
+CANWrapper_StatusTypeDef CANWrapper_Poll_Errors();
 
 /**
  * @brief               Sends a message over CAN.

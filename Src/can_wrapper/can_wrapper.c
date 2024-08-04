@@ -3,14 +3,17 @@
  * CAN wrapper for simplified message receipt & transmission.
  *
  * @author Logan Furedi <logan.furedi@umsats.ca>
+ * @author Arnav Gupta <arnav.gupta@umsats.ca>
  *
  * @date February 28, 2024
  */
 
 #include <stddef.h>
-#include <tuk/can_wrapper/can_queue.h>
-#include <tuk/can_wrapper/can_wrapper.h>
-#include <tuk/can_wrapper/tx_cache.h>
+
+#include "tuk/can_wrapper/can_queue.h"
+#include "tuk/can_wrapper/error_queue.h"
+#include "tuk/can_wrapper/can_wrapper.h"
+#include "tuk/can_wrapper/tx_cache.h"
 
 #define ACK_MASK       0b00000000001
 #define RECIPIENT_MASK 0b00000000110
@@ -25,6 +28,7 @@ static CANWrapper_InitTypeDef s_init_struct = {0};
 
 static CANQueue s_msg_queue = {0};
 static TxCache s_tx_cache = {0};
+static ErrorQueue s_error_queue = {0};
 
 static bool s_init = false;
 
@@ -76,6 +80,7 @@ CANWrapper_StatusTypeDef CANWrapper_Init(CANWrapper_InitTypeDef init_struct)
 
 	s_msg_queue = CANQueue_Create();
 	s_tx_cache = TxCache_Create();
+	s_error_queue = ErrorQueue_Create();
 
 	s_init_struct = init_struct;
 
@@ -83,7 +88,7 @@ CANWrapper_StatusTypeDef CANWrapper_Init(CANWrapper_InitTypeDef init_struct)
 	return CAN_WRAPPER_HAL_OK;
 }
 
-CANWrapper_StatusTypeDef CANWrapper_Poll_Events()
+CANWrapper_StatusTypeDef CANWrapper_Poll_Messages()
 {
 	if (!s_init) return CAN_WRAPPER_NOT_INITIALISED;
 
@@ -104,6 +109,13 @@ CANWrapper_StatusTypeDef CANWrapper_Poll_Events()
 		}
 	}
 
+	return CAN_WRAPPER_HAL_OK;
+}
+
+CANWrapper_StatusTypeDef CANWrapper_Poll_Errors()
+{
+	if (!s_init) return CAN_WRAPPER_NOT_INITIALISED;
+
 	// Poll transmission timeout events.
 	// TODO: Needs serious cleaning up.
 	uint32_t counter_value = __HAL_TIM_GET_COUNTER(s_init_struct.htim);
@@ -115,17 +127,20 @@ CANWrapper_StatusTypeDef CANWrapper_Poll_Events()
 		const TxCacheItem *front_item = &s_tx_cache.items[0];
 
 		uint64_t tx_tick = front_item->timestamp.counter_value + front_item->timestamp.rcr_value*PERIOD_TICKS;
-		uint64_t timeout_tick = (tx_tick + TIMEOUT) % PERIOD_TICKS;
+		uint64_t timeout_tick = (tx_tick + TIMEOUT) % (16*PERIOD_TICKS);
 
-		if (tx_tick < timeout_tick ? (current_tick >= timeout_tick || current_tick < tx_tick)
-				: (current_tick >= timeout_tick && current_tick < tx_tick)) // don't even try to decipher this :)
+		bool clock_overflowed = tx_tick >= timeout_tick;
+		bool timeout_occurred = clock_overflowed ?
+				( current_tick >= timeout_tick && current_tick < tx_tick )
+			: ( current_tick >= timeout_tick || current_tick < tx_tick );
+
+		if (timeout_occurred)
 		{
-			// timed out.
 			CANWrapper_ErrorInfo error_info;
 			error_info.error = CAN_WRAPPER_ERROR_TIMEOUT;
 			error_info.msg = front_item->msg.msg;
 			error_info.recipient = front_item->msg.recipient;
-			s_init_struct.error_callback(error_info); // TODO: this is dangerous. could easily lead to bugs. FIX!
+			ErrorQueue_Enqueue(&s_error_queue, error_info);
 
 			TxCache_Erase(&s_tx_cache, 0);
 		}
@@ -133,6 +148,13 @@ CANWrapper_StatusTypeDef CANWrapper_Poll_Events()
 		{
 			break;
 		}
+	}
+
+	// Report queued errors
+	CANWrapper_ErrorInfo error;
+	while (ErrorQueue_Dequeue(&s_error_queue, &error))
+	{
+		s_init_struct.error_callback(error);
 	}
 
 	return CAN_WRAPPER_HAL_OK;
