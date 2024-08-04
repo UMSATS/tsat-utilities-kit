@@ -26,7 +26,10 @@
 
 static CANWrapper_InitTypeDef s_init_struct = {0};
 
+#ifndef CWM_IMMEDIATE_MODE
 static CANQueue s_msg_queue = {0};
+#endif
+
 static TxCache s_tx_cache = {0};
 static ErrorQueue s_error_queue = {0};
 
@@ -78,7 +81,9 @@ CANWrapper_StatusTypeDef CANWrapper_Init(CANWrapper_InitTypeDef init_struct)
 		return CAN_WRAPPER_FAILED_TO_START_TIMER;
 	}
 
+#ifndef CWM_IMMEDIATE_MODE
 	s_msg_queue = CANQueue_Create();
+#endif
 	s_tx_cache = TxCache_Create();
 	s_error_queue = ErrorQueue_Create();
 
@@ -88,6 +93,7 @@ CANWrapper_StatusTypeDef CANWrapper_Init(CANWrapper_InitTypeDef init_struct)
 	return CAN_WRAPPER_HAL_OK;
 }
 
+#ifndef CWM_IMMEDIATE_MODE
 CANWrapper_StatusTypeDef CANWrapper_Poll_Messages()
 {
 	if (!s_init) return CAN_WRAPPER_NOT_INITIALISED;
@@ -98,9 +104,9 @@ CANWrapper_StatusTypeDef CANWrapper_Poll_Messages()
 	{
 		if (queue_item.msg.is_ack)
 		{
-			// delete the cache entry for this message
+			// check if this is an ACK for a transmitted message.
 			int index = TxCache_Find(&s_tx_cache, &queue_item.msg);
-			TxCache_Erase(&s_tx_cache, index);
+			TxCache_Erase(&s_tx_cache, index); // delete it if it is.
 		}
 
 		if (!queue_item.msg.is_ack || s_init_struct.notify_of_acks)
@@ -111,6 +117,7 @@ CANWrapper_StatusTypeDef CANWrapper_Poll_Messages()
 
 	return CAN_WRAPPER_HAL_OK;
 }
+#endif
 
 CANWrapper_StatusTypeDef CANWrapper_Poll_Errors()
 {
@@ -232,16 +239,36 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 
 		if (recipient == s_init_struct.node_id && sender != s_init_struct.node_id) // TODO: use CAN filtering instead.
 		{
-			queue_item.msg.sender = sender;
-			queue_item.msg.is_ack = is_ack;
-
 			if (!is_ack)
 			{
 				// respond with ACK.
 				transmit_internal(sender, &queue_item.msg.msg, true);
 			}
 
+#ifdef CWM_IMMEDIATE_MODE
+			// Author's Note: It is a little messy that I'm using the queue_item
+			// variable when there is no queue in Immediate Mode. However, this
+			// involves the fewest copy operations and #ifdef directives.
+			if (is_ack)
+			{
+				// check if this is an ACK for a transmitted message.
+				// This adds an O(n) operation to the ISR which isn't ideal.
+				// Though, the code is highly optimised so it shouldn't be too
+				// problematic. We could revisit this at a later date if needed.
+				int index = TxCache_Find(&s_tx_cache, &queue_item.msg);
+				TxCache_Erase(&s_tx_cache, index); // delete it if it is.
+			}
+
+			if (!is_ack || s_init_struct.notify_of_acks)
+			{
+				s_init_struct.message_callback(queue_item.msg.msg, sender, is_ack);
+			}
+#else
+			queue_item.msg.sender = sender;
+			queue_item.msg.is_ack = is_ack;
+
 			CANQueue_Enqueue(&s_msg_queue, queue_item);
+#endif
 		}
 	}
 }
