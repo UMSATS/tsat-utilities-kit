@@ -14,6 +14,7 @@
 
 #include "can_command_list.h"
 #include "can_message.h"
+#include "error_queue.h"
 #include <stdbool.h>
 #include <stm32l4xx.h>
 #include <stm32l4xx_hal_can.h>
@@ -34,23 +35,6 @@ typedef enum
 	CAN_WRAPPER_FAILED_TO_ENABLE_INTERRUPT,
 	CAN_WRAPPER_FAILED_TO_START_TIMER,
 } CANWrapper_StatusTypeDef;
-
-typedef struct
-{
-	enum
-	{
-		CAN_WRAPPER_ERROR_TIMEOUT = 0,
-		CAN_WRAPPER_ERROR_CAN_TIMEOUT,
-	} error;
-	union
-	{
-		struct {
-			CANMessage msg;
-			NodeID recipient;
-		};
-		// TODO: more error information.
-	};
-} CANWrapper_ErrorInfo;
 
 typedef void (*CANMessageCallback)(CANMessage, NodeID, bool);
 typedef void (*CANErrorCallback)(CANWrapper_ErrorInfo);

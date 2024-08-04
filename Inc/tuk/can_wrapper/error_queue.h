@@ -13,7 +13,6 @@
 #ifndef CAN_WRAPPER_MODULE_INC_ERROR_QUEUE_H_
 #define CAN_WRAPPER_MODULE_INC_ERROR_QUEUE_H_
 
-#include "can_wrapper.h"
 #include <stdbool.h>
 #include <sys/_stdint.h>
 
@@ -25,6 +24,23 @@ typedef struct
     uint32_t tail;
     CANWrapper_ErrorInfo items[ERROR_QUEUE_SIZE];
 } ErrorQueue;
+
+typedef struct
+{
+	enum
+	{
+		CAN_WRAPPER_ERROR_TIMEOUT = 0,
+		CAN_WRAPPER_ERROR_CAN_TIMEOUT,
+	} error;
+	union
+	{
+		struct {
+			CANMessage msg;
+			NodeID recipient;
+		};
+		// TODO: more error information.
+	};
+} CANWrapper_ErrorInfo;
 
 /**
  * @brief               Creates an empty error queue.
