@@ -15,6 +15,7 @@
 #include "can_command_list.h"
 #include "can_message.h"
 #include "error_queue.h"
+
 #include <stdbool.h>
 #include <stm32l4xx.h>
 #include <stm32l4xx_hal_can.h>

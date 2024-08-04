@@ -10,7 +10,7 @@
  * @date August 3, 2024
  */
 
-#include <tuk/can_wrapper/error_queue.h>
+#include "tuk/can_wrapper/error_queue.h"
 
 ErrorQueue ErrorQueue_Create()
 {
