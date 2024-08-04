@@ -14,102 +14,82 @@
 
 typedef enum
 {
-	SENSOR_PCB_TEMP = 0,
-	SENSOR_MCU_TEMP,
-	SENSOR_PLD_WELL_TEMP,
-	SENSOR_PLD_WELL_LIGHT,
-} SensorID;
-
-typedef enum
-{
-	POWER_LINE_BATTERY = 0,
-	POWER_LINE_PAYLOAD,
-	POWER_LINE_ADCS
-} PowerLineID;
-
-typedef enum
-{
 	////////////////////////////////////////////
 	/// COMMON
 	////////////////////////////////////////////
-	CMD_PREPRARE_FOR_SHUTDOWN            = 0x00,
-	CMD_RESET                            = 0x01,
-	CMD_GET_PCB_TEMP                     = 0x02,
-	CMD_GET_MCU_TEMP                     = 0x03,
+	CMD_COMM_RESET                       = 0x00,
+	CMD_COMM_PREPARE_FOR_SHUTDOWN        = 0x01,
+	CMD_COMM_GET_TELEMETRY               = 0x02,
+	CMD_COMM_SET_TELEMETRY_INTERVAL      = 0x03,
+	CMD_COMM_GET_TELEMETRY_INTERVAL      = 0x04,
+	CMD_COMM_UPDATE_START                = 0x05,
+	CMD_COMM_UPDATE_LOAD                 = 0x06,
+	CMD_COMM_UPDATE_END                  = 0x07,
 
 	////////////////////////////////////////////
 	/// CDH
 	////////////////////////////////////////////
 	// Event Processing.
 	CMD_CDH_PROCESS_HEARTBEAT            = 0x10,
-	CMD_CDH_PROCESS_ERROR                = 0x11,
-	CMD_CDH_PROCESS_READY_FOR_SHUTDOWN   = 0x12,
-	CMD_CDH_PROCESS_STARTUP              = 0x13,
-	CMD_CDH_PROCESS_PCB_TEMP             = 0x14,
-	CMD_CDH_PROCESS_MCU_TEMP             = 0x15,
-	CMD_CDH_PROCESS_CONVERTER_STATUS     = 0x16,
-	CMD_CDH_PROCESS_BATTERY_VOLTAGE      = 0x17,
-	CMD_CDH_PROCESS_MAGNETIC_FIELD       = 0x18,
-	CMD_CDH_PROCESS_ANGULAR_VELOCITY     = 0x19,
-	CMD_CDH_PROCESS_WELL_LIGHT           = 0x1A,
-	CMD_CDH_PROCESS_WELL_TEMP            = 0x1B,
-	CMD_CDH_PROCESS_LED_TEST             = 0x1C,
+	CMD_CDH_PROCESS_RUNTIME_ERROR        = 0x11,
+	CMD_CDH_PROCESS_COMMAND_ERROR        = 0x12,
+	CMD_CDH_PROCESS_NOTIFICATION         = 0x13,
+	CMD_CDH_PROCESS_TELEMETRY_REPORT     = 0x14,
+	CMD_CDH_PROCESS_RETURN               = 0x15,
+	CMD_CDH_PROCESS_LED_TEST             = 0x16,
+
+	// Clock
+	CMD_CDH_SET_RTC                      = 0x17,
+	CMD_CDH_GET_RTC                      = 0x18,
 
 	// Tests
-	CMD_CDH_TEST_FLASH                   = 0x1D,
-	CMD_CDH_TEST_MRAM                    = 0x1E,
+	CMD_CDH_TEST_FLASH                   = 0x19,
+	CMD_CDH_TEST_MRAM                    = 0x1A,
+
+	CMD_CDH_RESET_SUBSYSTEM              = 0x1B,
 
 	// Antenna
-	CMD_CDH_ENABLE_ANTENNA_DEPLOYMENT    = 0x1F,
-	CMD_CDH_DEPLOY_ANTENNA               = 0x20,
-	CMD_CDH_TRANSMIT_UHF_BEACON          = 0x21,
-
-	// RTOS
-	CMD_CDH_GET_NUM_TASKS                = 0x22,
-	CMD_CDH_SCHEDULE_SAMPLE_TASK         = 0x23,
-
-	// CLock
-	CMD_CDH_SET_RTC                      = 0x24,
-	CMD_CDH_GET_RTC                      = 0x25,
-
-	CMD_CDH_SET_TELEMETRY_INTERVAL       = 0x26,
+	CMD_CDH_ENABLE_ANTENNA               = 0x1C,
+	CMD_CDH_DEPLOY_ANTENNA               = 0x1D,
 
 	////////////////////////////////////////////
 	/// POWER
 	////////////////////////////////////////////
-	CMD_PWR_SET_LINE_POWER               = 0x30,
-	CMD_PWR_SET_BATTERY_HEATER           = 0x31,
-	CMD_PWR_GET_CONVERTER_STATUS         = 0x32,
-	CMD_PWR_SET_TELEMETRY_INTERVAL       = 0x33,
+	CMD_PWR_PROCESS_HEARTBEAT            = 0x20,
+	CMD_PWR_SET_SUBSYSTEM_POWER          = 0x21,
+	CMD_PWR_GET_SUBSYSTEM_POWER          = 0x22,
+	CMD_PWR_SET_BATTERY_HEATER_POWER     = 0x23,
+	CMD_PWR_GET_BATTERY_HEATER_POWER     = 0x24,
+	CMD_PWR_SET_BATTERY_ACCESS           = 0x25,
+	CMD_PWR_GET_BATTERY_ACCESS           = 0x26,
 
 	////////////////////////////////////////////
 	/// ADCS
 	////////////////////////////////////////////
-	CMD_ADCS_SET_MAGNETORQUER_POWER      = 0x40,
-	CMD_ADCS_SET_MAGNETORQUER_DIRECTION  = 0x41,
-	CMD_ADCS_GET_MAGNETIC_FIELD          = 0x42,
-	CMD_ADCS_GET_ANGULAR_VELOCITY        = 0x43,
-	CMD_ADCS_SET_TELEMETRY_INTERVAL      = 0x44,
+	CMD_ADCS_SET_MAGNETORQUER_DIRECTION  = 0x30,
+	CMD_ADCS_GET_MAGNETORQUER_DIRECTION  = 0x31,
+	CMD_ADCS_SET_OPERATING_MODE          = 0x32,
+	CMD_ADCS_GET_OPERATING_MODE          = 0x33,
 
 	////////////////////////////////////////////
 	/// PAYLOAD
 	////////////////////////////////////////////
-	CMD_PLD_SET_WELL_LED                 = 0x50,
-	CMD_PLD_SET_WELL_HEATER              = 0x51,
-	CMD_PLD_SET_WELL_TEMP                = 0x52,
-	CMD_PLD_GET_WELL_TEMP                = 0x53,
-	CMD_PLD_GET_WELL_LIGHT               = 0x54,
-	CMD_PLD_SET_TELEMETRY_INTERVAL       = 0x55,
-	CMD_PLD_TEST_LEDS                    = 0x56,
+	CMD_PLD_SET_ACTIVE_ENVS              = 0x40,
+	CMD_PLD_GET_ACTIVE_ENVS              = 0x41,
+	CMD_PLD_SET_SETPOINT                 = 0x42,
+	CMD_PLD_GET_SETPOINT                 = 0x43,
+	CMD_PLD_SET_TOLERANCE                = 0x44,
+	CMD_PLD_GET_TOLERANCE                = 0x45,
+	CMD_PLD_TEST_LEDS                    = 0x46,
 
 	////////////////////////////////////////////
 	/// GROUND STATION
 	////////////////////////////////////////////
-	CMD_GND_VERIFY_FLASH_TEST            = 0x60,
-	CMD_GND_VERIFY_MRAM_TEST             = 0x61,
-	CMD_GDN_VERIFY_CDH_NUM_TASKS         = 0x62,
-	CMD_GND_VERIFY_SAMPLE_TASK           = 0x63,
-	CMD_GND_VERIFY_RTC                   = 0x64,
+	CMD_GND_VERIFY_FLASH_TEST            = 0x50,
+	CMD_GND_VERIFY_MRAM_TEST             = 0x51,
+	CMD_GDN_VERIFY_CDH_NUM_TASKS         = 0x52,
+	CMD_GND_VERIFY_SAMPLE_TASK           = 0x53,
+	CMD_GND_VERIFY_RTC                   = 0x54,
 } CmdID;
 
 typedef struct
