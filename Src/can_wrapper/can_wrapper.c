@@ -127,12 +127,12 @@ CANWrapper_StatusTypeDef CANWrapper_Poll_Errors()
 		uint64_t tx_tick = front_item->timestamp.counter_value + front_item->timestamp.rcr_value*PERIOD_TICKS;
 		uint64_t timeout_tick = (tx_tick + TIMEOUT) % (16*PERIOD_TICKS);
 
-		bool clockOverflowed = tx_tick >= timeout_tick;
-		bool timeoutOccurred = clockOverflowed ?
+		bool clock_overflowed = tx_tick >= timeout_tick;
+		bool timeout_occurred = clock_overflowed ?
 				( current_tick >= timeout_tick && current_tick < tx_tick )
-			: ( current_tick >= timeout_tick || current_tick < tx_tick )
+			: ( current_tick >= timeout_tick || current_tick < tx_tick );
 
-		if (timeoutOccurred)
+		if (timeout_occurred)
 		{
 			CANWrapper_ErrorInfo error_info;
 			error_info.error = CAN_WRAPPER_ERROR_TIMEOUT;
@@ -152,7 +152,7 @@ CANWrapper_StatusTypeDef CANWrapper_Poll_Errors()
 	CANWrapper_ErrorInfo error;
 	while (ErrorQueue_Dequeue(&s_err_queue, &error))
 	{
-		s_init_struct.error_callback(error) // TODO: this is dangerous. could easily lead to bugs. FIX!
+		s_init_struct.error_callback(error);
 	}
 
 	return CAN_WRAPPER_HAL_OK;
