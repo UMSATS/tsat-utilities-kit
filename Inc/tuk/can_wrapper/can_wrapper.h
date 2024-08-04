@@ -59,12 +59,14 @@ typedef struct
  */
 CANWrapper_StatusTypeDef CANWrapper_Init(CANWrapper_InitTypeDef init_struct);
 
+#ifndef CWM_IMMEDIATE_MODE
 /**
  * @brief               Polls for new messages.
  *
  * This is the point where message_callback will be triggered.
  */
 CANWrapper_StatusTypeDef CANWrapper_Poll_Messages();
+#endif
 
 /**
  * @brief               Polls for new errors.
