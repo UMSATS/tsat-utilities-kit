@@ -134,7 +134,6 @@ CANWrapper_StatusTypeDef CANWrapper_Poll_Errors()
 
 		if (timeoutOccurred)
 		{
-			// timed out.
 			CANWrapper_ErrorInfo error_info;
 			error_info.error = CAN_WRAPPER_ERROR_TIMEOUT;
 			error_info.msg = front_item->msg.msg;

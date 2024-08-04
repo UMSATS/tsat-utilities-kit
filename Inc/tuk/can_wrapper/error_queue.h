@@ -45,7 +45,7 @@ bool ErrorQueue_IsFull(const ErrorQueue* queue);
  * @brief               Enqueues an error into the given queue.
  *
  * @param queue         The error queue.
- * @param message       The error to enqueue.
+ * @param error         The error to enqueue.
  * @return              true on success. false on fail.
  */
 bool ErrorQueue_Enqueue(ErrorQueue* queue, CANWrapper_ErrorInfo error);
@@ -54,7 +54,7 @@ bool ErrorQueue_Enqueue(ErrorQueue* queue, CANWrapper_ErrorInfo error);
  * @brief:              Dequeues an error out of the given queue.
  *
  * @param queue         The error queue.
- * @param out_message   The output location for error.
+ * @param out_error     The output location for the error.
  * @return              true on success. false on fail.
  */
 bool ErrorQueue_Dequeue(ErrorQueue* queue, CANWrapper_ErrorInfo* out_error);
