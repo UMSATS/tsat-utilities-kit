@@ -118,7 +118,7 @@ CANWrapper_StatusTypeDef CANWrapper_Poll_Events()
 		const TxCacheItem *front_item = &s_tx_cache.items[0];
 
 		uint64_t tx_tick = front_item->timestamp.counter_value + front_item->timestamp.rcr_value*PERIOD_TICKS;
-		uint64_t timeout_tick = (tx_tick + TIMEOUT) % PERIOD_TICKS;
+		uint64_t timeout_tick = (tx_tick + TIMEOUT) % (16*PERIOD_TICKS);
 
 		if (tx_tick < timeout_tick ? (current_tick >= timeout_tick || current_tick < tx_tick)
 				: (current_tick >= timeout_tick && current_tick < tx_tick)) // don't even try to decipher this :)
