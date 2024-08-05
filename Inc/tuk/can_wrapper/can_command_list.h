@@ -13,8 +13,6 @@
 
 #include <stdint.h>
 
-#define NUM_COMMANDS 40
-
 typedef enum
 {
 	////////////////////////////////////////////
@@ -84,6 +82,8 @@ typedef enum
 	CMD_PLD_SET_TOLERANCE,
 	CMD_PLD_GET_TOLERANCE,
 	CMD_PLD_TEST_LEDS,
+
+	NUM_COMMANDS
 } CmdID;
 
 typedef struct
