@@ -12,6 +12,8 @@
 
 #include <stdint.h>
 
+#define NUM_COMMANDS 40
+
 typedef enum
 {
 	////////////////////////////////////////////
@@ -81,15 +83,6 @@ typedef enum
 	CMD_PLD_SET_TOLERANCE,
 	CMD_PLD_GET_TOLERANCE,
 	CMD_PLD_TEST_LEDS,
-
-	////////////////////////////////////////////
-	/// GROUND STATION
-	////////////////////////////////////////////
-	CMD_GND_VERIFY_FLASH_TEST,
-	CMD_GND_VERIFY_MRAM_TEST,
-	CMD_GDN_VERIFY_CDH_NUM_TASKS,
-	CMD_GND_VERIFY_SAMPLE_TASK,
-	CMD_GND_VERIFY_RTC,
 } CmdID;
 
 typedef struct
@@ -98,6 +91,6 @@ typedef struct
 	uint8_t priority;
 } CmdConfig;
 
-extern const CmdConfig cmd_configs[0x70];
+extern const CmdConfig cmd_configs[NUM_COMMANDS];
 
 #endif /* CAN_WRAPPER_MODULE_INC_CAN_COMMAND_LIST_H_ */
