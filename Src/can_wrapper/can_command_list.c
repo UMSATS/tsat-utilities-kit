@@ -29,8 +29,8 @@ const CmdConfig cmd_configs[NUM_COMMANDS] = {
 		////////////////////////////////////////////
 		//CMD                                 //BODY SIZE //PRIORITY
 		[CMD_CDH_PROCESS_HEARTBEAT]            ={0, 2 },
-		[CMD_CDH_PROCESS_RUNTIME_ERROR]        ={2, 10},
-		[CMD_CDH_PROCESS_COMMAND_ERROR]        ={2, 10},
+		[CMD_CDH_PROCESS_RUNTIME_ERROR]        ={7, 10},
+		[CMD_CDH_PROCESS_COMMAND_ERROR]        ={7, 10},
 		[CMD_CDH_PROCESS_NOTIFICATION]         ={1, 2 },
 		[CMD_CDH_PROCESS_TELEMETRY_REPORT]     ={7, 3 },
 		[CMD_CDH_PROCESS_RETURN]               ={7, 32},
