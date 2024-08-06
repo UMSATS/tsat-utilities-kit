@@ -9,9 +9,9 @@
 #ifndef TSAT_UTILITIES_KIT_INC_TUK_CAN_WRAPPER_TELEMETRY_ID_H_
 #define TSAT_UTILITIES_KIT_INC_TUK_CAN_WRAPPER_TELEMETRY_ID_H_
 
-// NOTE: do not use this type directly. You cannot assume it will be one byte
-// wide. Instead, use the TelemetryID type defined farther down below.
-enum TelemetryID_ {
+#include <assert.h>
+
+typedef enum {
 	TEL_PCB_TEMP,
 	TEL_MCU_TEMP,
 	TEL_RSSI,
@@ -26,16 +26,16 @@ enum TelemetryID_ {
 	TEL_ANGULAR_VELOCITY,
 	TEL_WELL_TEMP,
 	TEL_WELL_LUMINOSITY
-};
+} TelemetryID;
 
-typedef uint8_t TelemetryID; // use this!
+_Static_assert(sizeof(TelemetryID) == 1, "Enum size exceeds 1 byte");
 
 // Usage: uint8_t key = CREATE_TELEMETRY_KEY(TEL_PCB_TEMP, 0)
-#define CREATE_TELEMETRY_KEY(tel_id, variant_id) (uint8_t)((tel_id << 4) | (0xF & variant_id))
+#define CREATE_TELEMETRY_KEY(tel_id, variant_id) (uint8_t)((tel_id << 4) | (0xf & variant_id))
 
-// Usage: uint8_t tel_id = GET_TELEMETRY_ID(key)
+// Usage: TelemetryID tel_id = GET_TELEMETRY_ID(key)
 // Usage: uint8_t var_id = GET_VARIANT_ID(key)
-#define GET_TELEMETRY_ID(tel_key) (TelemetryID)((tel_key & 0xF0) >> 4)
-#define GET_VARIANT_ID(tel_key) (uint8_t)((tel_key & 0x0F))
+#define GET_TELEMETRY_ID(tel_key) (TelemetryID)((tel_key & 0xf0) >> 4)
+#define GET_VARIANT_ID(tel_key) (uint8_t)(tel_key & 0x0f)
 
 #endif /* TSAT_UTILITIES_KIT_INC_TUK_CAN_WRAPPER_TELEMETRY_ID_H_ */

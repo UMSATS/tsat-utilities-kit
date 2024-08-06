@@ -15,6 +15,8 @@
 #include "can_command_list.h"
 #include "can_message.h"
 #include "error_queue.h"
+#include "error_info.h"
+#include "telemetry_id.h"
 
 #include <stdbool.h>
 #include <stm32l4xx.h>
