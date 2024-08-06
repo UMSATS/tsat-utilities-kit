@@ -56,16 +56,16 @@ static inline bool CANMessage_Equals(const CANMessage *msg1, const CANMessage *m
 // switches to a big-endian processor, that subsystem will have to perform a
 // byte swap.
 
-// Usage: float arg = GET_ARG(msg, 0, float)
+// Example Usage: float arg = GET_ARG(msg, 0, float);
 #define GET_ARG(msg, pos, type) ({ \
 	type var; \
 	memcpy(&var, &msg.body[pos], sizeof(var)); \
 	var; \
 	})
 
-// Usage: SET_ARG(msg, 0, some_value)
-#define SET_ARG(msg, pos, value) do { \
-	typeof(value) var = value; \
+// Example Usage: SET_ARG(msg, 0, uint8_t, 32);
+#define SET_ARG(msg, pos, type, value) do { \
+	type var = value; \
 	memcpy(&msg.body[pos], &var, sizeof(var)); \
 	} while (0)
 
