@@ -11,6 +11,7 @@
 #define CAN_WRAPPER_MODULE_INC_CAN_MESSAGE_H_
 
 #include "can_command_list.h"
+
 #include <sys/_stdint.h>
 #include <stdbool.h>
 #include <string.h>
@@ -50,15 +51,22 @@ static inline bool CANMessage_Equals(const CANMessage *msg1, const CANMessage *m
 			&& memcmp(msg1->body, msg2->body, cmd_configs[msg1->cmd].body_size) == 0;
 }
 
-// macros to get/set arguments in a command.
-// NOTE: these depend on the fact that TSAT's MCUs are all of the same endianness.
-// If that were to change, you would have to set/get the elements in the message
-// body directly.
+// Macros to get & set arguments in a command.
+// NOTE: These assume consistent endianness across subsystems. If a subsystem
+// switches to a big-endian processor, that subsystem will have to perform a
+// byte swap.
 
-#define GET_ARG(msg, pos, var) \
-	var = *((typeof(var)*)(msg.body + pos))
+// Example Usage: float arg = GET_ARG(msg, 0, float);
+#define GET_ARG(msg, pos, type) ({ \
+	type var; \
+	memcpy(&var, &msg.body[pos], sizeof(var)); \
+	var; \
+	})
 
-#define SET_ARG(msg, pos, var) \
-	*((typeof(var)*)(msg.body + pos)) = var;
+// Example Usage: SET_ARG(msg, 0, uint8_t, 32);
+#define SET_ARG(msg, pos, type, value) do { \
+	type var = value; \
+	memcpy(&msg.body[pos], &var, sizeof(var)); \
+	} while (0)
 
 #endif /* CAN_WRAPPER_MODULE_INC_CAN_MESSAGE_H_ */
