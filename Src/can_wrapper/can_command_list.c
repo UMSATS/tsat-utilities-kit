@@ -8,7 +8,7 @@
  * @date March 16, 2024
  */
 
-#include <tuk/can_wrapper/can_command_list.h>
+#include "tuk/can_wrapper/can_command_list.h"
 
 const CmdConfig cmd_configs[NUM_COMMANDS] = {
 		////////////////////////////////////////////
@@ -42,7 +42,7 @@ const CmdConfig cmd_configs[NUM_COMMANDS] = {
 		[CMD_CDH_TEST_FLASH]                   ={0, 32},
 		[CMD_CDH_TEST_MRAM]                    ={0, 32},
 
-		[CMD_CDH_RESET_SUBSYSTEM]              ={4, 32},
+		[CMD_CDH_RESET_SUBSYSTEM]              ={1, 32},
 
 		[CMD_CDH_ENABLE_ANTENNA]               ={0, 32},
 		[CMD_CDH_DEPLOY_ANTENNA]               ={0, 32},
@@ -52,8 +52,8 @@ const CmdConfig cmd_configs[NUM_COMMANDS] = {
 		////////////////////////////////////////////
 		//CMD                                 //BODY SIZE //PRIORITY
 		[CMD_PWR_PROCESS_HEARTBEAT]            ={0, 2 },
-		[CMD_PWR_SET_SUBSYSTEM_POWER]          ={5, 0 },
-		[CMD_PWR_GET_SUBSYSTEM_POWER]          ={4, 32},
+		[CMD_PWR_SET_SUBSYSTEM_POWER]          ={2, 0 },
+		[CMD_PWR_GET_SUBSYSTEM_POWER]          ={1, 32},
 		[CMD_PWR_SET_BATTERY_HEATER_POWER]     ={1, 5 },
 		[CMD_PWR_GET_BATTERY_HEATER_POWER]     ={0, 32},
 		[CMD_PWR_SET_BATTERY_ACCESS]           ={1, 32},

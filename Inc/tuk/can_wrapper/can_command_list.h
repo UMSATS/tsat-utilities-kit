@@ -11,8 +11,20 @@
 #ifndef CAN_WRAPPER_MODULE_INC_CAN_COMMAND_LIST_H_
 #define CAN_WRAPPER_MODULE_INC_CAN_COMMAND_LIST_H_
 
+#include "telemetry_id.h"
+
 #include <stdint.h>
 
+// Used in the PROCESS_NOTIFICATION command.
+typedef enum
+{
+	NOTIFICATION_STARTUP,
+	NOTIFICATION_PREPARING_FOR_SHUTDOWN,
+	NOTIFICATION_READY_FOR_SHUTDOWN
+} NotificationID;
+
+// NOTE: If you modify this list, you MUST update the command configurations to
+// reflect your changes.
 typedef enum
 {
 	////////////////////////////////////////////
