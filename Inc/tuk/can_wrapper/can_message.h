@@ -26,14 +26,10 @@ typedef enum
 	NODE_PAYLOAD = 3
 } NodeID;
 
-typedef union
+typedef struct
 {
-	struct
-	{
-		uint8_t cmd;
-		uint8_t body[CAN_MAX_BODY_SIZE];
-	};
-	uint8_t data[CAN_MAX_BODY_SIZE+1];
+	uint8_t cmd;
+	uint8_t body[CAN_MAX_BODY_SIZE];
 } CANMessage;
 
 typedef struct
