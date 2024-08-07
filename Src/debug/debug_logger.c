@@ -1,8 +1,9 @@
-/*
- * error_tracker.c
+/** (c) 2024 UMSATS
+ * @file debug_logger.c
  *
- *  Created on: Jan 15, 2024
- *      Author: Logan Furedi
+ * @author Logan Furedi <logan.furedi@umsats.ca>
+ *
+ * @date Aug 6, 2024
  */
 
 #include "tuk/debug/debug_logger.h"
@@ -17,7 +18,7 @@
 
 typedef struct
 {
-	DebugBuffer *buffer_stack[BUFFER_STACK_MAX];
+	LogBuffer *buffer_stack[BUFFER_STACK_MAX];
 	size_t buffer_stack_size;
 } DebugLogger;
 
@@ -30,7 +31,7 @@ void DebugLogger_Init()
 	s_logger.buffer_stack_size = 0;
 }
 
-void DebugLogger_Push_Buffer(DebugBuffer *debug_buffer)
+void DebugLogger_Push_Buffer(LogBuffer *buffer)
 {
 	if (s_logger.buffer_stack_size == BUFFER_STACK_MAX)
 	{
@@ -38,10 +39,10 @@ void DebugLogger_Push_Buffer(DebugBuffer *debug_buffer)
 		return;
 	}
 
-	s_logger.buffer_stack[s_logger.buffer_stack_size] = debug_buffer;
+	s_logger.buffer_stack[s_logger.buffer_stack_size] = buffer;
 	s_logger.buffer_stack_size++;
 
-	DebugBuffer_Clear(debug_buffer);
+	LogBuffer_Clear(buffer);
 }
 
 void DebugLogger_Pop_Buffer()
@@ -63,9 +64,9 @@ bool DebugLogger_Put(uint8_t byte)
 		return false;
 	}
 
-	DebugBuffer *buffer = s_logger.buffer_stack[s_logger.buffer_stack_size-1];
+	LogBuffer *buffer = s_logger.buffer_stack[s_logger.buffer_stack_size-1];
 
-	if (buffer->size == DEBUG_BUFFER_MAX)
+	if (buffer->size == LOG_BUFFER_MAX)
 	{
 		LOG_WARN("error buffer overflow.");
 		return false;
