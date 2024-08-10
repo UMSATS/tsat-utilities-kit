@@ -1,5 +1,5 @@
 /**
- * @file log.h
+ * @file print.h
  *
  * @author Logan Furedi <logan.furedi@umsats.ca>
  *
