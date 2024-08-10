@@ -15,7 +15,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 
-#define LOG_BUFFER_MAX 5
+#define LOG_BUFFER_MAX 4
 
 typedef struct
 {
