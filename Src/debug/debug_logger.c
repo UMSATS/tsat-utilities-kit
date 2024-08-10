@@ -7,7 +7,7 @@
  */
 
 #include "tuk/debug/debug_logger.h"
-#include "tuk/debug/log.h"
+#include "tuk/debug/print.h"
 
 #include <string.h>
 #include <stdint.h>
@@ -24,7 +24,7 @@ typedef struct
 
 static DebugLogger s_logger = {0};
 
-#define LOG_SUBJECT "DebugLogger"
+#define PRINT_SUBJECT "DebugLogger"
 
 void DebugLogger_Init()
 {
@@ -35,7 +35,7 @@ void DebugLogger_Push_Buffer(LogBuffer *buffer)
 {
 	if (s_logger.buffer_stack_size == BUFFER_STACK_MAX)
 	{
-		LOG_ERROR("buffer stack overflow.");
+		PRINT_ERROR("buffer stack overflow.");
 		return;
 	}
 
@@ -49,7 +49,7 @@ void DebugLogger_Pop_Buffer()
 {
 	if (s_logger.buffer_stack_size <= 1)
 	{
-		LOG_ERROR("buffer stack underflow.");
+		PRINT_ERROR("buffer stack underflow.");
 		return;
 	}
 
@@ -60,7 +60,7 @@ bool DebugLogger_Put(uint8_t byte)
 {
 	if (s_logger.buffer_stack_size == 0)
 	{
-		LOG_ERROR("no active error buffer.");
+		PRINT_ERROR("no active error buffer.");
 		return false;
 	}
 
@@ -68,7 +68,7 @@ bool DebugLogger_Put(uint8_t byte)
 
 	if (buffer->size == LOG_BUFFER_MAX)
 	{
-		LOG_WARN("error buffer overflow.");
+		PRINT_WARN("error buffer overflow.");
 		return false;
 	}
 
