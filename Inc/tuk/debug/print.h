@@ -9,6 +9,11 @@
 
 #include <stdio.h>
 
+// disable printing in release mode.
+#ifndef DEBUG
+#define DISABLE_PRINTING
+#endif
+
 #ifndef DISABLE_PRINTING
 
 	#define PRINT_INFO(...) \
