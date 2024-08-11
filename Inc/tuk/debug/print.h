@@ -21,13 +21,13 @@
 
 	#define PRINT_ERROR(...) \
 		do { \
-			fprintf(stderr, "[" PRINT_SUBJECT "] Error: " __VA_ARGS__); \
-			fprintf(stderr, " ('%s':%d)\n", __FILE__, __LINE__); \
+			printf("[" PRINT_SUBJECT "] ERROR: " __VA_ARGS__); \
+			printf(" ('%s':%d)\n", __FILE__, __LINE__); \
 		} while (0)
 
 	#define PRINT_WARN(...) \
 		do { \
-			printf("[" PRINT_SUBJECT "] Warning: " __VA_ARGS__); \
+			printf("[" PRINT_SUBJECT "] WARNING: " __VA_ARGS__); \
 			printf(" ('%s':%d)\n", __FILE__, __LINE__); \
 		} while (0)
 
