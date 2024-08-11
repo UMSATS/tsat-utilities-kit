@@ -3,10 +3,6 @@
  * Queue ADT for storing transmission errors.
  * Implemented using circular buffer.
  *
- * @author Logan Furedi <logan.furedi@umsats.ca>
- * @author Om Sevak <om.sevak@umsats.ca>
- * @author Arnav Gupta <arnav.gupta@umsats.ca>
- *
  * @date August 3, 2024
  */
 

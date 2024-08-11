@@ -2,8 +2,6 @@
  * @file can_message.h
  * Structures for storing CAN message data.
  *
- * @author Logan Furedi <logan.furedi@umsats.ca>
- *
  * @date March 6, 2024
  */
 

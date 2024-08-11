@@ -2,8 +2,6 @@
  * @file utils.h
  * Provides useful miscellaneous utilities for all subsystems.
  *
- * @author Logan Furedi <logan.furedi@umsats.ca>
- *
  * @date Jun 14, 2024
  */
 

@@ -1,8 +1,6 @@
 /**
  * @file telemetry_id.h
  *
- * @author Logan Furedi <logan.furedi@umsats.ca>
- *
  * @date August 3, 2024
  */
 

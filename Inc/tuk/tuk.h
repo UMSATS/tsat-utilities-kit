@@ -1,8 +1,6 @@
 /**
  * @file tuk.h
  *
- * @author Logan Furedi <logan.furedi@umsats.ca>
- *
  * @date May 25, 2024
  */
 

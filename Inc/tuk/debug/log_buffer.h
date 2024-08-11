@@ -3,8 +3,6 @@
  *
  * A buffer for storing debug data. Used by the Debug Logger.
  *
- * @author Logan Furedi <logan.furedi@umsats.ca>
- *
  * @date Aug 6, 2024
  */
 

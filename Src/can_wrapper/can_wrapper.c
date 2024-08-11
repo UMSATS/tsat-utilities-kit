@@ -2,9 +2,6 @@
  * @file can_wrapper.c
  * CAN wrapper for simplified message receipt & transmission.
  *
- * @author Logan Furedi <logan.furedi@umsats.ca>
- * @author Arnav Gupta <arnav.gupta@umsats.ca>
- *
  * @date February 28, 2024
  */
 

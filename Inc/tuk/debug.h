@@ -1,8 +1,6 @@
 /**
  * @file debug.h
  *
- * @author Logan Furedi <logan.furedi@umsats.ca>
- *
  * @date May 27, 2024
  */
 

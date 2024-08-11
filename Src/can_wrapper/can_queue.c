@@ -3,9 +3,6 @@
  * Queue ADT for storing CAN messages.
  * Implemented using circular buffer.
  *
- * @author Logan Furedi <logan.furedi@umsats.ca>
- * @author Om Sevak <om.sevak@umsats.ca>
- *
  * @date February 12, 2024
  */
 

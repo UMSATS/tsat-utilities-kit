@@ -2,9 +2,6 @@
  * @file can_command_list.h
  * Configurations for all valid command ID's.
  *
- * @author Logan Furedi <logan.furedi@umsats.ca>
- * @author Arnav Gupta <arnav.gupta@umsats.ca>
- *
  * @date March 3, 2024
  */
 

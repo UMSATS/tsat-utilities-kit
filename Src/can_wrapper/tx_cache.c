@@ -3,8 +3,6 @@
  * List ADT that caches transmitted CAN messages.
  * Implemented using circular buffer.
  *
- * @author Logan Furedi <logan.furedi@umsats.ca>
- *
  * @date March 6, 2024
  */
 

@@ -3,8 +3,6 @@
  *
  * Helper module for writing diagnostic data to a buffer.
  *
- * @author Logan Furedi <logan.furedi@umsats.ca>
- *
  * @date Aug 6, 2024
  */
 

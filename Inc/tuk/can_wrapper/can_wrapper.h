@@ -3,9 +3,6 @@
  * CAN wrapper for simplified initialisation, message reception, and message
  * transmission.
  *
- * @author Logan Furedi <logan.furedi@umsats.ca>
- * @author Arnav Gupta <arnav.gupta@umsats.ca>
- *
  * @date February 27, 2024
  */
 

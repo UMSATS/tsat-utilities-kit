@@ -1,8 +1,6 @@
 /**
  * @file error_info.h
  *
- * @author Logan Furedi <logan.furedi@umsats.ca>
- *
  * @date Aug 4, 2024
  */
 

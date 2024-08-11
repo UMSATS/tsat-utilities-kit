@@ -1,8 +1,6 @@
 /** (c) 2024 UMSATS
  * @file log_buffer.c
  *
- * @author Logan Furedi <logan.furedi@umsats.ca>
- *
  * @date Aug 6, 2024
  */
 
