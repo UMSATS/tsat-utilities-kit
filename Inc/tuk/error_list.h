@@ -1,7 +1,5 @@
-/**
+/** (c) 2024 UMSATS
  * @file error_list.h
- *
- * @date May 27, 2024
  */
 
 #ifndef TSAT_UTILITIES_KIT_INC_TUK_ERROR_TRACKER_ERROR_LIST_H_

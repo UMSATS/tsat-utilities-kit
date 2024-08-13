@@ -1,7 +1,5 @@
 /** (c) 2024 UMSATS
  * @file print.c
- *
- * @date Aug 11, 2024
  */
 
 #include "main.h"

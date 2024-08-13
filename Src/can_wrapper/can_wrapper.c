@@ -1,8 +1,7 @@
-/**
+/** (c) 2024 UMSATS
  * @file can_wrapper.c
- * CAN wrapper for simplified message receipt & transmission.
  *
- * @date February 28, 2024
+ * CAN wrapper for simplified message receipt & transmission.
  */
 
 #include <stddef.h>

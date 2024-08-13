@@ -1,8 +1,7 @@
-/**
+/** (c) 2024 UMSATS
  * @file can_command_list.h
- * Configurations for all valid command ID's.
  *
- * @date March 3, 2024
+ * Configurations for all valid command ID's.
  */
 
 #ifndef CAN_WRAPPER_MODULE_INC_CAN_COMMAND_LIST_H_

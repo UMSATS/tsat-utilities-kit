@@ -1,8 +1,7 @@
-/**
+/** (c) 2024 UMSATS
  * @file utils.h
- * Provides useful miscellaneous utilities for all subsystems.
  *
- * @date Jun 14, 2024
+ * Provides useful miscellaneous utilities for all subsystems.
  */
 
 #ifndef TSAT_UTILITIES_KIT_INC_TUK_UTILS_H_

@@ -2,8 +2,6 @@
  * @file debug_logger.h
  *
  * Helper module for writing diagnostic data to a buffer.
- *
- * @date Aug 6, 2024
  */
 
 #ifndef TSAT_UTILITIES_KIT_INC_TUK_DEBUG_DEBUG_LOGGER_H_

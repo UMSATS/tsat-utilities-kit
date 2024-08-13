@@ -1,9 +1,8 @@
-/**
+/** (c) 2024 UMSATS
  * @file tx_cache.h
+ *
  * List ADT that caches transmitted CAN messages.
  * Implemented using circular buffer.
- *
- * @date March 6, 2024
  */
 
 #ifndef CAN_WRAPPER_MODULE_INC_TX_CACHE_H_

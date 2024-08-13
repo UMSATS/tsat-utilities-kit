@@ -1,7 +1,5 @@
 /** (c) 2024 UMSATS
  * @file debug_logger.c
- *
- * @date Aug 6, 2024
  */
 
 #include "tuk/debug/debug_logger.h"

@@ -1,8 +1,7 @@
-/**
+/** (c) 2024 UMSATS
  * @file can_command_list.c
- * Configurations for all valid command ID's.
  *
- * @date March 16, 2024
+ * Configurations for all valid command ID's.
  */
 
 #include "tuk/can_wrapper/can_command_list.h"

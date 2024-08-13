@@ -1,7 +1,5 @@
 /** (c) 2024 UMSATS
  * @file log_buffer.c
- *
- * @date Aug 6, 2024
  */
 
 #include <stdbool.h>

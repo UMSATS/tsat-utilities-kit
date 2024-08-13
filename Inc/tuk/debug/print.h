@@ -1,7 +1,5 @@
-/**
+/** (c) 2024 UMSATS
  * @file print.h
- *
- * @date May 27, 2024
  */
 
 #ifndef TSAT_UTILITIES_KIT_INC_TUK_DEBUG_PRINT_H_

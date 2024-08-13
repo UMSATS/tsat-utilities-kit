@@ -1,8 +1,7 @@
-/**
+/** (c) 2024 UMSATS
  * @file can_message.h
- * Structures for storing CAN message data.
  *
- * @date March 6, 2024
+ * Structures for storing CAN message data.
  */
 
 #ifndef CAN_WRAPPER_MODULE_INC_CAN_MESSAGE_H_

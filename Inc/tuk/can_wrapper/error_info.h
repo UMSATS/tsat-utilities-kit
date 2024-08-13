@@ -1,7 +1,5 @@
-/**
+/** (c) 2024 UMSATS
  * @file error_info.h
- *
- * @date Aug 4, 2024
  */
 
 #ifndef TSAT_UTILITIES_KIT_INC_TUK_CAN_WRAPPER_ERROR_INFO_H_

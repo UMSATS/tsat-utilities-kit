@@ -1,7 +1,5 @@
-/**
+/** (c) 2024 UMSATS
  * @file telemetry_id.h
- *
- * @date August 3, 2024
  */
 
 #ifndef TSAT_UTILITIES_KIT_INC_TUK_CAN_WRAPPER_TELEMETRY_ID_H_

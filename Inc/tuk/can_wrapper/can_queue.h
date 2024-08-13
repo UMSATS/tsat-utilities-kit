@@ -1,9 +1,8 @@
-/**
+/** (c) 2024 UMSATS
  * @file can_queue.h
+ *
  * Queue ADT for storing CAN messages.
  * Implemented using circular buffer.
- *
- * @date February 12, 2024
  */
 
 #ifndef CAN_WRAPPER_MODULE_INC_CAN_QUEUE_H_

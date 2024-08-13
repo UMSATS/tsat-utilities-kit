@@ -1,9 +1,8 @@
-/**
+/** (c) 2024 UMSATS
  * @file error_queue.c
+ *
  * Queue ADT for storing transmission errors.
  * Implemented using circular buffer.
- *
- * @date August 3, 2024
  */
 
 #include "tuk/can_wrapper/error_queue.h"

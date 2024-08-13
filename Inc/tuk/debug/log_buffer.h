@@ -2,8 +2,6 @@
  * @file log_buffer.h
  *
  * A buffer for storing debug data. Used by the Debug Logger.
- *
- * @date Aug 6, 2024
  */
 
 #ifndef TSAT_UTILITIES_KIT_INC_TUK_DEBUG_LOG_BUFFER_H_
