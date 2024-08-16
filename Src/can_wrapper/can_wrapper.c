@@ -172,6 +172,12 @@ static CANWrapper_StatusTypeDef transmit_internal(NodeID recipient, CANMessage *
 {
 	if (!s_init) return CAN_WRAPPER_NOT_INITIALISED;
 
+	if (HAL_CAN_GetState(s_init_struct.hcan) != HAL_CAN_STATE_READY &&
+			HAL_CAN_GetState(s_init_struct.hcan) != HAL_CAN_STATE_LISTENING)
+	{
+		return CAN_WRAPPER_HAL_ERROR;
+	}
+
 	CmdConfig config = cmd_configs[msg->cmd];
 
 	// TX message parameters.
@@ -181,7 +187,11 @@ static CANWrapper_StatusTypeDef transmit_internal(NodeID recipient, CANMessage *
 				| (is_ack ? ACK_MASK : 0);
 
 	// wait to send CAN message.
-	while (HAL_CAN_GetTxMailboxesFreeLevel(s_init_struct.hcan) == 0){} // TODO: make sure this is safe. If not, limit with loop counter.
+	uint8_t limiter = 0;
+	while (HAL_CAN_GetTxMailboxesFreeLevel(s_init_struct.hcan) == 0)
+	{
+		if (limiter++ >= 4000) return CAN_WRAPPER_HAL_TIMEOUT;
+	}
 
 	CAN_TxHeaderTypeDef tx_header;
 	tx_header.IDE = CAN_ID_STD;   // use standard identifier.
