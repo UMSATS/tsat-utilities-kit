@@ -175,7 +175,7 @@ static CANWrapper_StatusTypeDef transmit_internal(NodeID recipient, CANMessage *
 	if (HAL_CAN_GetState(s_init_struct.hcan) != HAL_CAN_STATE_READY &&
 			HAL_CAN_GetState(s_init_struct.hcan) != HAL_CAN_STATE_LISTENING)
 	{
-		return CAN_WRAPPER_HAL_ERROR;
+		return CAN_WRAPPER_TX_FAIL_BAD_CAN_STATE;
 	}
 
 	CmdConfig config = cmd_configs[msg->cmd];
@@ -187,10 +187,14 @@ static CANWrapper_StatusTypeDef transmit_internal(NodeID recipient, CANMessage *
 				| (is_ack ? ACK_MASK : 0);
 
 	// wait to send CAN message.
-	uint8_t limiter = 0;
+	uint16_t limiter = 0;
 	while (HAL_CAN_GetTxMailboxesFreeLevel(s_init_struct.hcan) == 0)
 	{
-		if (limiter++ >= 4000) return CAN_WRAPPER_HAL_TIMEOUT;
+		// return if mailboxes aren't being freed.
+		// for reasoning of the limit see:
+		// https://github.com/UMSATS/tsat-utilities-kit/issues/31#issuecomment-2287744661
+		if (limiter >= 4000) return CAN_WRAPPER_TX_MAILBOXES_FULL;
+		limiter++;
 	}
 
 	CAN_TxHeaderTypeDef tx_header;
