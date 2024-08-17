@@ -9,7 +9,7 @@
 
 #include "can_command_list.h"
 
-#include <sys/_stdint.h>
+#include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
 

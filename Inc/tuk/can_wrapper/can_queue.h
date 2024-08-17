@@ -10,7 +10,7 @@
 
 #include "can_message.h"
 #include <stdbool.h>
-#include <sys/_stdint.h>
+#include <stdint.h>
 
 #define CAN_QUEUE_SIZE 100
 

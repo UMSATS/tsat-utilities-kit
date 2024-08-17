@@ -11,7 +11,7 @@
 #include "error_info.h"
 
 #include <stdbool.h>
-#include <sys/_stdint.h>
+#include <stdint.h>
 
 #define ERROR_QUEUE_SIZE 100
 

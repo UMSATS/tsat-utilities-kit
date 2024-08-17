@@ -19,7 +19,7 @@
 #include <stm32l4xx_hal_can.h>
 #include <stm32l4xx_hal_tim.h>
 #include <stm32l4xx_hal_def.h>
-#include <sys/_stdint.h>
+#include <stdint.h>
 
 typedef enum
 {
