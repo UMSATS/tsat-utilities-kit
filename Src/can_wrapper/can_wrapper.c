@@ -203,7 +203,11 @@ static CANWrapper_StatusTypeDef transmit_internal(NodeID recipient, CANMessage *
 	tx_header.RTR = CAN_RTR_DATA; // specify as data frame.
 	tx_header.DLC = 1 + config.body_size; // cmd ID + message body.
 
-	if (!is_ack)
+	uint32_t tx_mailbox; // transmit mailbox.
+	HAL_StatusTypeDef status;
+	status = HAL_CAN_AddTxMessage(s_init_struct.hcan, &tx_header, (uint8_t*)&msg, &tx_mailbox);
+
+	if (status == HAL_OK && !is_ack)
 	{
 		uint32_t counter_value = __HAL_TIM_GET_COUNTER(s_init_struct.htim);
 		TxCacheItem cached_msg = {
@@ -223,8 +227,7 @@ static CANWrapper_StatusTypeDef transmit_internal(NodeID recipient, CANMessage *
 		TxCache_Push_Back(&s_tx_cache, &cached_msg);
 	}
 
-	uint32_t tx_mailbox; // transmit mailbox.
-	return HAL_CAN_AddTxMessage(s_init_struct.hcan, &tx_header, (uint8_t*)&msg, &tx_mailbox);
+	return status;
 }
 
 // called by HAL when a new CAN message is received and pending.
