@@ -23,7 +23,7 @@ typedef struct
 		uint32_t counter_value;
 		uint32_t rcr_value;
 	} timestamp;
-	CachedCANMessage msg;
+	CANMessage msg;
 } TxCacheItem;
 
 typedef struct
@@ -40,7 +40,7 @@ bool TxCache_IsFull(const TxCache* txc);
 
 bool TxCache_Push_Back(TxCache *txc, TxCacheItem *item);
 
-int TxCache_Find(const TxCache *txc, const CachedCANMessage *ack);
+int TxCache_Find(const TxCache *txc, const CANMessage *ack);
 
 bool TxCache_Erase(TxCache *txc, int index);
 

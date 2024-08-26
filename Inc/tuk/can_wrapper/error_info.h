@@ -16,10 +16,7 @@ typedef struct
 	} error;
 	union
 	{
-		struct {
-			CANMessage msg;
-			NodeID recipient;
-		};
+		CANMessage msg;
 		// TODO: more error information.
 	};
 } CANWrapper_ErrorInfo;

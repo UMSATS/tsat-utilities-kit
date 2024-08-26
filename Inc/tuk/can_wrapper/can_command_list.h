@@ -10,6 +10,7 @@
 #include "telemetry_id.h"
 
 #include <stdint.h>
+#include <assert.h>
 
 // Used in the PROCESS_NOTIFICATION command.
 typedef enum
@@ -93,6 +94,7 @@ typedef enum
 
 	NUM_COMMANDS
 } CmdID;
+_Static_assert(sizeof(CmdID) == 1, "Enum size exceeds 1 byte");
 
 typedef struct
 {

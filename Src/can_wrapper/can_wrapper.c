@@ -31,7 +31,7 @@ static ErrorQueue s_error_queue = {0};
 
 static bool s_init = false;
 
-static CANWrapper_StatusTypeDef transmit_internal(NodeID recipient, CANMessage *msg, bool is_ack);
+static CANWrapper_StatusTypeDef transmit_internal(NodeID recipient, const CANMessage *msg, bool is_ack);
 
 CANWrapper_StatusTypeDef CANWrapper_Init(CANWrapper_InitTypeDef init_struct)
 {
@@ -100,14 +100,15 @@ CANWrapper_StatusTypeDef CANWrapper_Poll_Messages()
 	{
 		if (queue_item.msg.is_ack)
 		{
-			// check if this is an ACK for a transmitted message.
+			// Search for the message to verify that it's ours.
 			int index = TxCache_Find(&s_tx_cache, &queue_item.msg);
 			TxCache_Erase(&s_tx_cache, index); // delete it if it is.
 		}
 
+		// Only report this if the user wants to know about it.
 		if (!queue_item.msg.is_ack || s_init_struct.notify_of_acks)
 		{
-			s_init_struct.message_callback(queue_item.msg.msg, queue_item.msg.sender, queue_item.msg.is_ack);
+			s_init_struct.message_callback(queue_item.msg);
 		}
 	}
 
@@ -119,30 +120,30 @@ CANWrapper_StatusTypeDef CANWrapper_Poll_Errors()
 {
 	if (!s_init) return CAN_WRAPPER_NOT_INITIALISED;
 
-	// Poll transmission timeout events.
-	// TODO: Needs serious cleaning up.
+	// Get timer values.
 	uint32_t counter_value = __HAL_TIM_GET_COUNTER(s_init_struct.htim);
 	uint32_t rcr_value = s_init_struct.htim->Instance->RCR;
 	uint64_t current_tick = counter_value + rcr_value*PERIOD_TICKS;
 
+	// Poll transmission timeout events.
 	while (s_tx_cache.size > 0)
 	{
 		const TxCacheItem *front_item = &s_tx_cache.items[0];
 
-		uint64_t tx_tick = front_item->timestamp.counter_value + front_item->timestamp.rcr_value*PERIOD_TICKS;
+		// Calculate the times of important events.
+		uint64_t transmission_tick = front_item->timestamp.counter_value + front_item->timestamp.rcr_value*PERIOD_TICKS;
 		uint64_t timeout_tick = (tx_tick + TIMEOUT) % (16*PERIOD_TICKS);
 
 		bool clock_overflowed = tx_tick >= timeout_tick;
 		bool timeout_occurred = clock_overflowed ?
-				( current_tick >= timeout_tick && current_tick < tx_tick )
-			: ( current_tick >= timeout_tick || current_tick < tx_tick );
+		         ( current_tick >= timeout_tick && current_tick < tx_tick )
+		       : ( current_tick >= timeout_tick || current_tick < tx_tick );
 
 		if (timeout_occurred)
 		{
 			CANWrapper_ErrorInfo error_info;
 			error_info.error = CAN_WRAPPER_ERROR_TIMEOUT;
-			error_info.msg = front_item->msg.msg;
-			error_info.recipient = front_item->msg.recipient;
+			error_info.msg = front_item->msg;
 			ErrorQueue_Enqueue(&s_error_queue, error_info);
 
 			TxCache_Erase(&s_tx_cache, 0);
@@ -163,12 +164,12 @@ CANWrapper_StatusTypeDef CANWrapper_Poll_Errors()
 	return CAN_WRAPPER_HAL_OK;
 }
 
-CANWrapper_StatusTypeDef CANWrapper_Transmit(NodeID recipient, CANMessage *msg)
+CANWrapper_StatusTypeDef CANWrapper_Transmit(NodeID recipient, const CANMessage *msg)
 {
 	return transmit_internal(recipient, msg, false);
 }
 
-static CANWrapper_StatusTypeDef transmit_internal(NodeID recipient, CANMessage *msg, bool is_ack)
+static CANWrapper_StatusTypeDef transmit_internal(NodeID recipient, const CANMessage *msg, bool is_ack)
 {
 	if (!s_init) return CAN_WRAPPER_NOT_INITIALISED;
 
@@ -178,15 +179,17 @@ static CANWrapper_StatusTypeDef transmit_internal(NodeID recipient, CANMessage *
 		return CAN_WRAPPER_TX_FAIL_BAD_CAN_STATE;
 	}
 
-	CmdConfig config = cmd_configs[msg->cmd];
+	// Define the message header.
+	CAN_TxHeaderTypeDef tx_header = {0};
+	tx_header.StdId = (cmd_configs[msg->cmd].priority << 5 & PRIORITY_MASK)
+	                | (s_init_struct.node_id          << 3 & SENDER_MASK)
+	                | (recipient                      << 1 & RECIPIENT_MASK)
+	                | (is_ack                              & ACK_MASK);
+	tx_header.IDE = CAN_ID_STD;   // We are using the standard identifier.
+	tx_header.RTR = CAN_RTR_DATA; // We are transmitting data.
+	tx_header.DLC = 1 + cmd_configs[msg->cmd].body_size; // Length = cmd ID + body.
 
-	// TX message parameters.
-	uint16_t id = (config.priority       << 5 & PRIORITY_MASK)
-	            | (s_init_struct.node_id << 3 & SENDER_MASK)
-	            | (recipient             << 1 & RECIPIENT_MASK)
-				| (is_ack ? ACK_MASK : 0);
-
-	// wait to send CAN message.
+	// Wait to send CAN message.
 	uint16_t limiter = 0;
 	while (HAL_CAN_GetTxMailboxesFreeLevel(s_init_struct.hcan) == 0)
 	{
@@ -197,34 +200,33 @@ static CANWrapper_StatusTypeDef transmit_internal(NodeID recipient, CANMessage *
 		limiter++;
 	}
 
-	CAN_TxHeaderTypeDef tx_header;
-	tx_header.IDE = CAN_ID_STD;   // use standard identifier.
-	tx_header.StdId = id;         // define standard identifier.
-	tx_header.RTR = CAN_RTR_DATA; // specify as data frame.
-	tx_header.DLC = 1 + config.body_size; // cmd ID + message body.
-
 	uint32_t tx_mailbox; // transmit mailbox.
 	HAL_StatusTypeDef status;
 	status = HAL_CAN_AddTxMessage(s_init_struct.hcan, &tx_header, (uint8_t*)&msg, &tx_mailbox);
 
 	if (status == HAL_OK && !is_ack)
 	{
+		// Get timer variables.
 		uint32_t counter_value = __HAL_TIM_GET_COUNTER(s_init_struct.htim);
-		TxCacheItem cached_msg = {
+		uint32_t rcr_value = s_init_struct.htim->Instance->RCR;
+
+		TxCacheItem tx_cache_item = {
 				.timestamp = {
 						.counter_value = counter_value,
-						.rcr_value = s_init_struct.htim->Instance->RCR
+						.rcr_value = rcr_value
 				},
 				.msg = {
-						.msg = *msg,
-						.priority = config.priority,
+						.priority = cmd_configs[msg->cmd].priority,
 						.sender = s_init_struct.node_id,
 						.recipient = recipient,
 						.is_ack = is_ack,
 				}
 		};
 
-		TxCache_Push_Back(&s_tx_cache, &cached_msg);
+		// Copy over the message contents (command ID + body).
+		memcpy(&tx_cache_item.msg.cmd, &msg->cmd, CAN_MAX_BODY_SIZE+1);
+
+		TxCache_Push_Back(&s_tx_cache, &tx_cache_item);
 	}
 
 	return status;
@@ -237,34 +239,41 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 	{
 		HAL_StatusTypeDef status;
 
+		// Create an item to be placed into the queue.
 		CANQueueItem queue_item = {0};
 
-		// get CAN message.
-		CAN_RxHeaderTypeDef rx_header; // message header.
-		status = HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &rx_header, (uint8_t*)&queue_item.msg);
+		// Retrieve the message header and payload.
+		CAN_RxHeaderTypeDef rx_header;
+		status = HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &rx_header, (uint8_t*)&queue_item.msg.cmd);
 
 		if (status != HAL_OK)
 			return; // in theory this should never happen. :p
 
-		bool is_ack      = ACK_MASK & rx_header.StdId;
-		NodeID recipient = (RECIPIENT_MASK & rx_header.StdId) >> 1;
-		NodeID sender    = (SENDER_MASK & rx_header.StdId) >> 3;
+		// Extract all the metadata from the header.
+		queue_item.msg.priority  = (PRIORITY_MASK & rx_header.StdId) >> 5;
+		queue_item.msg.sender    = (SENDER_MASK & rx_header.StdId) >> 3;
+		queue_item.msg.recipient = (RECIPIENT_MASK & rx_header.StdId) >> 1;
+		queue_item.msg.is_ack    = ACK_MASK & rx_header.StdId;
 
-		if (recipient == s_init_struct.node_id && sender != s_init_struct.node_id) // TODO: use CAN filtering instead.
+		// Check if the message is for us. (TODO: consider CAN filtering instead)
+		if (queue_item.msg.recipient == s_init_struct.node_id &&
+				queue_item.msg.sender != s_init_struct.node_id)
 		{
-			if (!is_ack)
+			if (!queue_item.msg.is_ack)
 			{
-				// respond with ACK.
-				transmit_internal(sender, &queue_item.msg.msg, true);
+				// Acknowledge the received message.
+				transmit_internal(queue_item.msg.sender, &queue_item.msg, true);
 			}
 
 #ifdef CWM_IMMEDIATE_MODE
 			// Author's Note: It is a little messy that I'm using the queue_item
 			// variable when there is no queue in Immediate Mode. However, this
 			// involves the fewest copy operations and #ifdef directives.
+
+			// Check if the received message is an ACK of one of our messages.
 			if (is_ack)
 			{
-				// check if this is an ACK for a transmitted message.
+				// Search for the message to verify that it's ours.
 				// This adds an O(n) operation to the ISR which isn't ideal.
 				// Though, the code is highly optimised so it shouldn't be too
 				// problematic. We could revisit this at a later date if needed.
@@ -272,13 +281,12 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 				TxCache_Erase(&s_tx_cache, index); // delete it if it is.
 			}
 
+			// Only report this if the user wants to know about it.
 			if (!is_ack || s_init_struct.notify_of_acks)
 			{
-				s_init_struct.message_callback(queue_item.msg.msg, sender, is_ack);
+				s_init_struct.message_callback(queue_item.msg);
 			}
 #else
-			queue_item.msg.sender = sender;
-			queue_item.msg.is_ack = is_ack;
 
 			CANQueue_Enqueue(&s_msg_queue, queue_item);
 #endif

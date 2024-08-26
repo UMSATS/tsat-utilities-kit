@@ -37,7 +37,7 @@ typedef enum
 	CAN_WRAPPER_TX_MAILBOXES_FULL
 } CANWrapper_StatusTypeDef;
 
-typedef void (*CANMessageCallback)(CANMessage, NodeID, bool);
+typedef void (*CANMessageCallback)(CANMessage);
 typedef void (*CANErrorCallback)(CANWrapper_ErrorInfo);
 
 typedef struct
@@ -53,7 +53,7 @@ typedef struct
 } CANWrapper_InitTypeDef;
 
 /**
- * @brief				Performs necessary setup for normal functioning.
+ * @brief               Performs necessary setup for normal functioning.
  *
  * @param init_struct   Configuration for initialisation.
  */
@@ -81,6 +81,6 @@ CANWrapper_StatusTypeDef CANWrapper_Poll_Errors();
  * @param recipient     ID of the intended recipient.
  * @param msg           See CANMessage definition.
  */
-CANWrapper_StatusTypeDef CANWrapper_Transmit(NodeID recipient, CANMessage *msg);
+CANWrapper_StatusTypeDef CANWrapper_Transmit(NodeID recipient, const CANMessage *msg);
 
 #endif /* CAN_WRAPPER_MODULE_INC_CAN_WRAPPER_H_ */

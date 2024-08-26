@@ -9,6 +9,7 @@
 #define CAN_WRAPPER_MODULE_INC_CAN_QUEUE_H_
 
 #include "can_message.h"
+
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -16,7 +17,7 @@
 
 typedef struct
 {
-	CachedCANMessage msg;
+	CANMessage msg;
 } CANQueueItem;
 
 typedef struct
