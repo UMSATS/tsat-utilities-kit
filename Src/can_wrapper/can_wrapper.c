@@ -132,12 +132,12 @@ CANWrapper_StatusTypeDef CANWrapper_Poll_Errors()
 
 		// Calculate the times of important events.
 		uint64_t transmission_tick = front_item->timestamp.counter_value + front_item->timestamp.rcr_value*PERIOD_TICKS;
-		uint64_t timeout_tick = (tx_tick + TIMEOUT) % (16*PERIOD_TICKS);
+		uint64_t timeout_tick = (transmission_tick + TIMEOUT) % (16*PERIOD_TICKS);
 
-		bool clock_overflowed = tx_tick >= timeout_tick;
+		bool clock_overflowed = transmission_tick >= timeout_tick;
 		bool timeout_occurred = clock_overflowed ?
-		         ( current_tick >= timeout_tick && current_tick < tx_tick )
-		       : ( current_tick >= timeout_tick || current_tick < tx_tick );
+		         ( current_tick >= timeout_tick && current_tick < transmission_tick )
+		       : ( current_tick >= timeout_tick || current_tick < transmission_tick );
 
 		if (timeout_occurred)
 		{
