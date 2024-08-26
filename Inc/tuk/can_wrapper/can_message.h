@@ -12,6 +12,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
+#include <assert.h>
 
 #define CAN_MAX_BODY_SIZE 7
 
@@ -22,32 +23,22 @@ typedef enum
 	NODE_ADCS    = 2,
 	NODE_PAYLOAD = 3
 } NodeID;
+_Static_assert(sizeof(NodeID) == 1, "Enum size exceeds 1 byte");
 
 typedef struct
 {
-	uint8_t cmd;
+	CmdID cmd;
 	uint8_t body[CAN_MAX_BODY_SIZE];
-} CANMessage;
-
-typedef struct
-{
-	CANMessage msg;
 	uint8_t priority;
-	uint8_t sender;
-	uint8_t recipient;
+	NodeID sender;
+	NodeID recipient;
 	uint8_t is_ack;
-} CachedCANMessage;
-
-static inline bool CANMessage_Equals(const CANMessage *msg1, const CANMessage *msg2)
-{
-	return msg1->cmd == msg2->cmd
-			&& memcmp(msg1->body, msg2->body, cmd_configs[msg1->cmd].body_size) == 0;
-}
+} CANMessage;
 
 // Macros to get & set arguments in a command.
 // NOTE: These assume consistent endianness across subsystems. If a subsystem
 // switches to a big-endian processor, that subsystem will have to perform a
-// byte swap.
+// byte swap of the message contents.
 
 // Example Usage: float arg = GET_ARG(msg, 0, float);
 #define GET_ARG(msg, pos, type) ({ \

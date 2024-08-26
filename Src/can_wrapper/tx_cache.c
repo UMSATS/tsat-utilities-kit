@@ -8,20 +8,7 @@
 #include <stdbool.h>
 #include <tuk/can_wrapper/tx_cache.h>
 
-// TODO: Refactor
-/**
- * @brief Returns true if the ACK message corresponds to msg.
- *
- * A match signifies:
- * 1. the message data and priority fields are identical,
- * 2. the sender of msg is the recipient of ack, and
- * 3. the recipient of ack is the sender of msg.
- *
- * @param msg  the message.
- * @param ack  the acknowledging message.
- * @return     true if the messages match. False otherwise.
- */
-static bool is_matching_ack(const CachedCANMessage *msg, const CachedCANMessage *ack);
+static bool is_matching_ack(const CANMessage *msg, const CANMessage *ack);
 
 TxCache TxCache_Create()
 {
@@ -51,7 +38,7 @@ bool TxCache_Push_Back(TxCache *txc, TxCacheItem *item)
 	return true;
 }
 
-int TxCache_Find(const TxCache *txc, const CachedCANMessage *ack)
+int TxCache_Find(const TxCache *txc, const CANMessage *ack)
 {
 	int index = 0;
 	int i = txc->head;
@@ -94,11 +81,24 @@ const TxCacheItem *TxCache_At(const TxCache *txc, int index)
 	return &txc->items[pos];
 }
 
-static bool is_matching_ack(const CachedCANMessage *msg, const CachedCANMessage *ack)
+/**
+ * @brief Returns true if the ACK message corresponds to msg.
+ *
+ * A match signifies:
+ * 1. the message data and priority fields are identical,
+ * 2. the sender of msg is the recipient of ack, and
+ * 3. the recipient of ack is the sender of msg.
+ *
+ * @param msg  the message.
+ * @param ack  the acknowledging message.
+ * @return     true if the messages match. False otherwise.
+ */
+static bool is_matching_ack(const CANMessage *msg, const CANMessage *ack)
 {
 	return !msg->is_ack
 		&& ack->is_ack
-		&& CANMessage_Equals(&msg->msg, &ack->msg)
+		&& msg->cmd == ack->cmd
+		&& memcmp(msg->body, ack->body, cmd_configs[msg->cmd].body_size) == 0
 		&& msg->priority == ack->priority
 		&& msg->sender == ack->recipient
 		&& msg->recipient == ack->sender;
