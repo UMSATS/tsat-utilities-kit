@@ -25,6 +25,8 @@ typedef enum
 } NodeID;
 _Static_assert(sizeof(NodeID) == 1, "Enum size exceeds 1 byte");
 
+#define NODE_ID_MAX 3
+
 typedef struct
 {
 	CmdID cmd;
