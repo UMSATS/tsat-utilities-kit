@@ -35,7 +35,7 @@ static CANWrapper_StatusTypeDef transmit_internal(NodeID recipient, const CANMes
 
 CANWrapper_StatusTypeDef CANWrapper_Init(CANWrapper_InitTypeDef init_struct)
 {
-	if ( !(init_struct.node_id <= 3
+	if ( !(init_struct.node_id <= NODE_ID_MAX
 		&& init_struct.message_callback != NULL
 		&& init_struct.hcan != NULL
 		&& init_struct.htim != NULL)) // TODO
@@ -92,7 +92,7 @@ CANWrapper_StatusTypeDef CANWrapper_Init(CANWrapper_InitTypeDef init_struct)
 CANWrapper_StatusTypeDef CANWrapper_Set_Node_ID(NodeID id)
 {
 	if (!s_init) return CAN_WRAPPER_NOT_INITIALISED;
-	if (id > 3) return CAN_WRAPPER_INVALID_ARGS;
+	if (id > NODE_ID_MAX) return CAN_WRAPPER_INVALID_ARGS;
 
 	s_init_struct.node_id = id;
 
