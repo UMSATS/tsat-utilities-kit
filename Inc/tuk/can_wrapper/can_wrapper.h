@@ -59,6 +59,13 @@ typedef struct
  */
 CANWrapper_StatusTypeDef CANWrapper_Init(CANWrapper_InitTypeDef init_struct);
 
+/**
+ * @brief								Sets the user's node ID (for advanced usage only).
+ *
+ * @param id						The new ID to be set.
+ */
+CANWrapper_StatusTypeDef CANWrapper_Set_Node_ID(NodeID id);
+
 #ifndef CWM_IMMEDIATE_MODE
 /**
  * @brief               Polls for new messages.
