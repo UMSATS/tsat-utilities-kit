@@ -89,6 +89,16 @@ CANWrapper_StatusTypeDef CANWrapper_Init(CANWrapper_InitTypeDef init_struct)
 	return CAN_WRAPPER_HAL_OK;
 }
 
+CANWrapper_StatusTypeDef CANWrapper_Set_Node_ID(NodeID id)
+{
+	if (!s_init) return CAN_WRAPPER_NOT_INITIALISED;
+	if (id > 3) return CAN_WRAPPER_INVALID_ARGS;
+
+	s_init_struct.node_id = id;
+
+	return CAN_WRAPPER_HAL_OK;
+}
+
 #ifndef CWM_IMMEDIATE_MODE
 CANWrapper_StatusTypeDef CANWrapper_Poll_Messages()
 {
