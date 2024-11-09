@@ -86,7 +86,7 @@ const TxCacheItem *TxCache_At(const TxCache *txc, int index)
  *
  * A match signifies:
  * 1. the message data and priority fields are identical
- * 2. the sender of msg is the recipient of ack, and
+ * 2. the sender of msg is the recipient of ack, and,
  * 3. the recipient of ack is the sender of msg.
  *
  * @param msg  the message.
