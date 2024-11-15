@@ -85,8 +85,8 @@ const TxCacheItem *TxCache_At(const TxCache *txc, int index)
  * @brief Returns true if the ACK message corresponds to msg.
  *
  * A match signifies:
- * 1. the message data and priority fields are identical,
- * 2. the sender of msg is the recipient of ack, and
+ * 1. the message data and priority fields are identical
+ * 2. the sender of msg is the recipient of ack, and,
  * 3. the recipient of ack is the sender of msg.
  *
  * @param msg  the message.
