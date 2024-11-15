@@ -10,8 +10,8 @@
 
 #include "can_command_list.h"
 #include "can_message.h"
-#include "error_queue.h"
 #include "error_info.h"
+#include "error_queue.h"
 #include "telemetry_id.h"
 
 #include <stdbool.h>
@@ -66,21 +66,13 @@ CANWrapper_StatusTypeDef CANWrapper_Init(CANWrapper_InitTypeDef init_struct);
  */
 CANWrapper_StatusTypeDef CANWrapper_Set_Node_ID(NodeID id);
 
-#ifndef CWM_IMMEDIATE_MODE
 /**
- * @brief               Polls for new messages.
+ * @brief               Polls for new messages and errors.
  *
- * This is the point where message_callback will be triggered.
+ * This is the point where message_callback and error_callback will be called.
+ * Does not poll messages in immediate mode.
  */
-CANWrapper_StatusTypeDef CANWrapper_Poll_Messages();
-#endif
-
-/**
- * @brief               Polls for new errors.
- *
- * This is the point where error_callback will be triggered.
- */
-CANWrapper_StatusTypeDef CANWrapper_Poll_Errors();
+CANWrapper_StatusTypeDef CANWrapper_Poll_Events();
 
 /**
  * @brief               Sends a message over CAN.

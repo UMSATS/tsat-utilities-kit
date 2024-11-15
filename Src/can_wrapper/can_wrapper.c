@@ -4,12 +4,13 @@
  * CAN wrapper for simplified message receipt & transmission.
  */
 
-#include <stddef.h>
-
+#include "tuk/can_wrapper/can_wrapper.h"
 #include "tuk/can_wrapper/can_queue.h"
 #include "tuk/can_wrapper/error_queue.h"
-#include "tuk/can_wrapper/can_wrapper.h"
 #include "tuk/can_wrapper/tx_cache.h"
+
+#include <stddef.h>
+
 
 #define ACK_MASK       0b00000000001
 #define RECIPIENT_MASK 0b00000000110
@@ -99,12 +100,16 @@ CANWrapper_StatusTypeDef CANWrapper_Set_Node_ID(NodeID id)
 	return CAN_WRAPPER_HAL_OK;
 }
 
-#ifndef CWM_IMMEDIATE_MODE
-CANWrapper_StatusTypeDef CANWrapper_Poll_Messages()
+CANWrapper_StatusTypeDef CANWrapper_Poll_Events()
 {
 	if (!s_init) return CAN_WRAPPER_NOT_INITIALISED;
 
-	// Poll incoming message queue.
+#ifndef CWM_IMMEDIATE_MODE
+	/**************************************************
+	 *               Message Processing               *
+	 **************************************************/
+
+	// Process incoming message queue.
 	CANQueueItem queue_item;
 	while (CANQueue_Dequeue(&s_msg_queue, &queue_item))
 	{
@@ -121,14 +126,10 @@ CANWrapper_StatusTypeDef CANWrapper_Poll_Messages()
 			s_init_struct.message_callback(queue_item.msg);
 		}
 	}
-
-	return CAN_WRAPPER_HAL_OK;
-}
 #endif
-
-CANWrapper_StatusTypeDef CANWrapper_Poll_Errors()
-{
-	if (!s_init) return CAN_WRAPPER_NOT_INITIALISED;
+	/**************************************************
+	 *                Error Processing                *
+	 **************************************************/
 
 	// Get timer values.
 	uint32_t counter_value = __HAL_TIM_GET_COUNTER(s_init_struct.htim);
