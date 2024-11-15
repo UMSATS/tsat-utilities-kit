@@ -46,4 +46,6 @@ typedef enum {
 	ERR_PLD_TCA9548_SET_CHANNEL,
 } ErrorID;
 
+_Static_assert(sizeof(ErrorID) == 8, "Enum size is not 8 bytes");
+
 #endif /* TSAT_UTILITIES_KIT_INC_TUK_ERROR_TRACKER_ERROR_LIST_H_ */
