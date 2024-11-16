@@ -6,10 +6,17 @@
 #define TSAT_UTILITIES_KIT_INC_TUK_ERROR_TRACKER_ERROR_LIST_H_
 
 typedef enum {
-	// COMMON
+	// GENERAL
 	ERR_OK = 0,                // No Error.
+	ERR_NULL_ARG,              // A function argument is unexpectedly NULL.
+	ERR_ARG_OUT_OF_RANGE,      // A function argument is in an unexpected range.
+	ERR_INVALID_ARG,           // A function argument is not rational.
+	ERR_QUEUE_FULL,            // The operation failed due to a full queue.
+	ERR_QUEUE_EMPTY,           // The operation failed due to an empty queue.
 	ERR_UNKNOWN_COMMAND,       // Unknown command ID in CAN message.
-	ERR_CAN_WRAPPER_INIT,      // Failed to initialise CAN Wrapper Module.
+	ERR_CAN_WRAPPER,           // CAN Wrapper Module error.
+
+	// HAL FUNCTIONS
 	ERR_ADC_CALIBRATION_START,
 	ERR_ADC_GET_VALUE,
 	ERR_ADC_POLL,
@@ -44,6 +51,6 @@ typedef enum {
 	ERR_PLD_TCA9548_INIT,
 	ERR_PLD_TCA9548_INVALID_CHANNEL,
 	ERR_PLD_TCA9548_SET_CHANNEL,
-} ErrorID;
+} ErrorCode;
 
 #endif /* TSAT_UTILITIES_KIT_INC_TUK_ERROR_TRACKER_ERROR_LIST_H_ */

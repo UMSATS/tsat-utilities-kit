@@ -30,4 +30,18 @@ static inline uint32_t BE_To_Native_32(const uint8_t *buf)
 	       (uint32_t)buf[3];
 }
 
+/**
+ * @brief Documents that you are not going to try to recover if an error occurs.
+ *
+ * If you use IGNORE_FAIL, you are admitting that if the function fails, there
+ * is no reasonable way for you to correct the issue, or you don't care one way
+ * or the other. This macro has no effect on the behaviour of the code.
+ *
+ * Usage:
+ * @code{.c}
+ * IGNORE_FAIL(Some_Unreliable_Function());
+ * @endcode
+ */
+#define IGNORE_FAIL(x) (void)(x)
+
 #endif /* TSAT_UTILITIES_KIT_INC_TUK_UTILS_H_ */
