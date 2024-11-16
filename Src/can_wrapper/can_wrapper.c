@@ -8,9 +8,11 @@
 #include "tuk/can_wrapper/can_queue.h"
 #include "tuk/can_wrapper/error_queue.h"
 #include "tuk/can_wrapper/tx_cache.h"
+#include "tuk/can_wrapper/cwm_mode.h"
+#include "tuk/debug.h"
+#include "tuk/utils.h"
 
 #include <stddef.h>
-
 
 #define ACK_MASK       0b00000000001
 #define RECIPIENT_MASK 0b00000000110
@@ -23,8 +25,13 @@
 
 static CANWrapper_InitTypeDef s_init_struct = {0};
 
-#ifndef CWM_IMMEDIATE_MODE
-static CANQueue s_msg_queue = {0};
+// Define message queue.
+#ifdef CWM_MODE_RTOS
+typedef StaticQueue_t osStaticMessageQDef_t;
+static osStaticMessageQDef_t s_msg_queue_control_block;
+static osMessageQueueId_t s_msg_queue;
+#else
+static CANQueue s_msg_queue;
 #endif
 
 static TxCache s_tx_cache = {0};
@@ -33,16 +40,20 @@ static ErrorQueue s_error_queue = {0};
 static bool s_init = false;
 
 static CANWrapper_StatusTypeDef transmit_internal(NodeID recipient, const CANMessage *msg, bool is_ack);
+#ifndef CWM_MODE_RTOS
+static void CANWrapper_Process_Message(CANMessage *msg);
+#endif
 
-CANWrapper_StatusTypeDef CANWrapper_Init(CANWrapper_InitTypeDef init_struct)
+CANWrapper_StatusTypeDef CANWrapper_Init(const CANWrapper_InitTypeDef *init_struct)
 {
-	if ( !(init_struct.node_id <= NODE_ID_MAX
-		&& init_struct.message_callback != NULL
-		&& init_struct.hcan != NULL
-		&& init_struct.htim != NULL)) // TODO
-	{
-		return CAN_WRAPPER_INVALID_ARGS;
-	}
+	ASSERT_PARAM(init_struct->node_id <= NODE_ID_MAX, CAN_WRAPPER_ARG_OUT_OF_RANGE);
+	ASSERT_PARAM(init_struct->message_callback != NULL, CAN_WRAPPER_NULL_ARG);
+	ASSERT_PARAM(init_struct->hcan != NULL, CAN_WRAPPER_NULL_ARG);
+	ASSERT_PARAM(init_struct->htim != NULL, CAN_WRAPPER_NULL_ARG);
+	ASSERT_PARAM(init_struct->msg_queue_buffer != NULL, CAN_WRAPPER_NULL_ARG);
+	ASSERT_PARAM(init_struct->msg_queue_buffer_size % sizeof(CANMessage) == 0, CAN_WRAPPER_INVALID_ARG);
+
+	s_init_struct = *init_struct;
 
 	const CAN_FilterTypeDef filter_config = {
 			.FilterIdHigh         = 0x0000,
@@ -57,34 +68,43 @@ CANWrapper_StatusTypeDef CANWrapper_Init(CANWrapper_InitTypeDef init_struct)
 			.SlaveStartFilterBank = 14,
 	};
 
-	if (HAL_CAN_ConfigFilter(init_struct.hcan, &filter_config) != HAL_OK)
+	if (HAL_CAN_ConfigFilter(s_init_struct.hcan, &filter_config) != HAL_OK)
 	{
 		return CAN_WRAPPER_FAILED_TO_CONFIG_FILTER;
 	}
 
-	if (HAL_CAN_Start(init_struct.hcan) != HAL_OK)
+	if (HAL_CAN_Start(s_init_struct.hcan) != HAL_OK)
 	{
 		return CAN_WRAPPER_FAILED_TO_START_CAN;
 	}
 
 	// enable CAN interrupt.
-	if (HAL_CAN_ActivateNotification(init_struct.hcan, CAN_IT_RX_FIFO0_MSG_PENDING) != HAL_OK)
+	if (HAL_CAN_ActivateNotification(s_init_struct.hcan, CAN_IT_RX_FIFO0_MSG_PENDING) != HAL_OK)
 	{
 		return CAN_WRAPPER_FAILED_TO_ENABLE_INTERRUPT;
 	}
 
-	if (HAL_TIM_Base_Start(init_struct.htim) != HAL_OK)
+	if (HAL_TIM_Base_Start(s_init_struct.htim) != HAL_OK)
 	{
 		return CAN_WRAPPER_FAILED_TO_START_TIMER;
 	}
 
-#ifndef CWM_IMMEDIATE_MODE
-	s_msg_queue = CANQueue_Create();
+#ifdef CWM_MODE_RTOS
+	const osMessageQueueAttr_t MSG_QUEUE_ATTR = {
+			.name = "CANMessageQueue",
+			.cb_mem = &s_msg_queue_control_block,
+			.cb_size = sizeof(s_msg_queue_control_block),
+			.mq_mem = s_init_struct.msg_queue_buffer,
+			.mq_size = s_init_struct.msg_queue_buffer_size
+	};
+	s_msg_queue = osMessageQueueNew(s_init_struct.msg_queue_buffer_size / sizeof(CANMessage), sizeof(CANMessage), &MSG_QUEUE_ATTR);
+	CANWrapper_Message_Task_Init(&s_init_struct.msg_task_init_struct, s_msg_queue);
+#else
+	CANQueue_Init(&s_msg_queue, s_init_struct.msg_queue_buffer, s_init_struct.msg_queue_buffer_size);
 #endif
+
 	s_tx_cache = TxCache_Create();
 	s_error_queue = ErrorQueue_Create();
-
-	s_init_struct = init_struct;
 
 	s_init = true;
 	return CAN_WRAPPER_HAL_OK;
@@ -93,7 +113,7 @@ CANWrapper_StatusTypeDef CANWrapper_Init(CANWrapper_InitTypeDef init_struct)
 CANWrapper_StatusTypeDef CANWrapper_Set_Node_ID(NodeID id)
 {
 	if (!s_init) return CAN_WRAPPER_NOT_INITIALISED;
-	if (id > NODE_ID_MAX) return CAN_WRAPPER_INVALID_ARGS;
+	if (id > NODE_ID_MAX) return CAN_WRAPPER_INVALID_ARG;
 
 	s_init_struct.node_id = id;
 
@@ -104,27 +124,16 @@ CANWrapper_StatusTypeDef CANWrapper_Poll_Events()
 {
 	if (!s_init) return CAN_WRAPPER_NOT_INITIALISED;
 
-#ifndef CWM_IMMEDIATE_MODE
+#ifndef CWM_MODE_RTOS
 	/**************************************************
 	 *               Message Processing               *
 	 **************************************************/
 
 	// Process incoming message queue.
-	CANQueueItem queue_item;
-	while (CANQueue_Dequeue(&s_msg_queue, &queue_item))
+	CANMessage msg;
+	while (ERR_OK == CANQueue_Dequeue(&s_msg_queue, &msg))
 	{
-		if (queue_item.msg.is_ack)
-		{
-			// Search for the message to verify that it's ours.
-			int index = TxCache_Find(&s_tx_cache, &queue_item.msg);
-			TxCache_Erase(&s_tx_cache, index); // delete it if it is.
-		}
-
-		// Only report this if the user wants to know about it.
-		if (!queue_item.msg.is_ack || s_init_struct.notify_of_acks)
-		{
-			s_init_struct.message_callback(queue_item.msg);
-		}
+		CANWrapper_Process_Message(&msg);
 	}
 #endif
 	/**************************************************
@@ -251,58 +260,60 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 		HAL_StatusTypeDef status;
 
 		// Create an item to be placed into the queue.
-		CANQueueItem queue_item = {0};
+		CANMessage msg = {0};
 
-		// Retrieve the message header and payload.
+		// Retrieve the message header and body.
 		CAN_RxHeaderTypeDef rx_header;
-		status = HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &rx_header, (uint8_t*)&queue_item.msg.cmd);
+		status = HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &rx_header, (uint8_t*)&msg.cmd);
 
 		if (status != HAL_OK)
 			return; // in theory this should never happen. :p
 
 		// Extract all the metadata from the header.
-		queue_item.msg.priority  = (PRIORITY_MASK & rx_header.StdId) >> 5;
-		queue_item.msg.sender    = (SENDER_MASK & rx_header.StdId) >> 3;
-		queue_item.msg.recipient = (RECIPIENT_MASK & rx_header.StdId) >> 1;
-		queue_item.msg.is_ack    = ACK_MASK & rx_header.StdId;
+		msg.priority  = (PRIORITY_MASK & rx_header.StdId) >> 5;
+		msg.sender    = (SENDER_MASK & rx_header.StdId) >> 3;
+		msg.recipient = (RECIPIENT_MASK & rx_header.StdId) >> 1;
+		msg.is_ack    = ACK_MASK & rx_header.StdId;
 
-		// Check if the message is for us. (TODO: consider CAN filtering instead)
-		if (queue_item.msg.recipient == s_init_struct.node_id &&
-				queue_item.msg.sender != s_init_struct.node_id)
-		{
-			if (!queue_item.msg.is_ack)
-			{
-				// Acknowledge the received message.
-				transmit_internal(queue_item.msg.sender, &queue_item.msg, true);
-			}
-
-#ifdef CWM_IMMEDIATE_MODE
-			// Author's Note: It is a little messy that I'm using the queue_item
-			// variable when there is no queue in Immediate Mode. However, this
-			// involves the fewest copy operations and #ifdef directives.
-
-			// Check if the received message is an ACK of one of our messages.
-			if (is_ack)
-			{
-				// Search for the message to verify that it's ours.
-				// This adds an O(n) operation to the ISR which isn't ideal.
-				// Though, the code is highly optimised so it shouldn't be too
-				// problematic. We could revisit this at a later date if needed.
-				int index = TxCache_Find(&s_tx_cache, &queue_item.msg);
-				TxCache_Erase(&s_tx_cache, index); // delete it if it is.
-			}
-
-			// Only report this if the user wants to know about it.
-			if (!is_ack || s_init_struct.notify_of_acks)
-			{
-				s_init_struct.message_callback(queue_item.msg);
-			}
+#ifdef CWM_MODE_MANUAL
+		// Enqueue all traffic.
+		IGNORE_FAIL(CANQueue_Enqueue(&s_msg_queue, &msg));
 #else
-
-			CANQueue_Enqueue(&s_msg_queue, queue_item);
+		// Check if the message is for us. (TODO: consider CAN filtering instead)
+		if (msg.recipient == s_init_struct.node_id && msg.sender != s_init_struct.node_id)
+		{
+#if defined(CWM_MODE_NORMAL)
+			IGNORE_FAIL(CANQueue_Enqueue(&s_msg_queue, &msg));
+#elif defined(CWM_MODE_RTOS)
+			IGNORE_FAIL(osMessageQueuePut(s_msg_queue, &msg, 0, 0));
 #endif
 		}
+#endif
 	}
+}
+
+void CANWrapper_Process_Message(CANMessage *msg)
+{
+	if (msg->is_ack)
+	{
+		// Search the TxCache to verify that this ACK corresponds to
+		// something we sent. Delete the entry if it is.
+		int index = TxCache_Find(&s_tx_cache, msg);
+		TxCache_Erase(&s_tx_cache, index);
+	}
+#ifdef CWM_MODE_MANUAL
+	// Pass all messages to the user callback.
+	s_init_struct.message_callback(*msg);
+#else
+	else
+	{
+		// Acknowledge the received message.
+		transmit_internal(msg->sender, msg, true);
+
+		// Execute the command.
+		s_init_struct.message_callback(*msg);
+	}
+#endif
 }
 
 void HAL_CAN_ErrorCallback(CAN_HandleTypeDef *hcan)
