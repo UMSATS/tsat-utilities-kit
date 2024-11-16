@@ -7,8 +7,6 @@
 #ifndef TSAT_UTILITIES_KIT_INC_TUK_DEBUG_ASSERT_H_
 #define TSAT_UTILITIES_KIT_INC_TUK_DEBUG_ASSERT_H_
 
-#include "print.h"
-
 #ifdef USE_FULL_ASSERT
 
 	#define ASSERT(cond) \
