@@ -23,7 +23,8 @@ typedef enum
 	NODE_ADCS    = 2,
 	NODE_PAYLOAD = 3
 } NodeID;
-_Static_assert(sizeof(NodeID) == 1, "Enum size exceeds 1 byte");
+_Static_assert(sizeof(NodeID) == 1, "Enum size is not 8 bits");
+
 
 #define NODE_ID_MAX 3
 

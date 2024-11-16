@@ -19,7 +19,8 @@ typedef enum
 	NOTIFICATION_PREPARING_FOR_SHUTDOWN,
 	NOTIFICATION_READY_FOR_SHUTDOWN
 } NotificationID;
-_Static_assert(sizeof(NotificationID) == 8, "Enum size is not 8 bytes");
+_Static_assert(sizeof(NotificationID) == 1, "Enum size is not 8 bits");
+
 // NOTE: If you modify this list, you MUST update the command configurations to
 // reflect your changes.
 typedef enum

@@ -36,7 +36,7 @@ typedef enum
 	CAN_WRAPPER_TX_FAIL_BAD_CAN_STATE,
 	CAN_WRAPPER_TX_MAILBOXES_FULL
 } CANWrapper_StatusTypeDef;
-_Static_assert(sizeof(CANWrapper_StatusTypeDef) == 8, "Enum size is not 8 bytes");
+_Static_assert(sizeof(CANWrapper_StatusTypeDef) == 1, "Enum size is not 8 bits");
 
 typedef void (*CANMessageCallback)(CANMessage);
 typedef void (*CANErrorCallback)(CANWrapper_ErrorInfo);
