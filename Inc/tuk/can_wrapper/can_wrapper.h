@@ -50,6 +50,7 @@ typedef struct
 
 /**
  * @brief              Performs necessary setup for normal functioning.
+ * @warning            This function should not be called from an ISR.
  *
  * @param init_struct  Configuration for initialisation.
  */
@@ -64,6 +65,7 @@ CANWrapper_StatusTypeDef CANWrapper_Set_Node_ID(NodeID id);
 
 /**
  * @brief              Polls for new messages and errors.
+ * @warning            This function should not be called from an ISR.
  *
  * This is the point where message_callback and error_callback will be called.
  * Does not poll messages in immediate mode.
@@ -72,6 +74,7 @@ CANWrapper_StatusTypeDef CANWrapper_Poll_Events();
 
 /**
  * @brief              Sends a message over CAN.
+ * @warning            This function should not be called from an ISR.
  *
  * @param recipient    ID of the intended recipient.
  * @param msg          See CANMessage definition.
