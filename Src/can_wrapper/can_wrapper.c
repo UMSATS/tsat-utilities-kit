@@ -180,6 +180,14 @@ CANWrapper_StatusTypeDef CANWrapper_Transmit(NodeID recipient, const CANMessage 
 	return transmit_internal(recipient, msg, false);
 }
 
+
+
+CANWrapper_StatusTypeDef CANWrapper_Transmit_Raw(NodeID recipient, const CANMessage *msg)
+{
+	return transmit_internal_raw(recipient, msg, false);
+}
+
+
 static CANWrapper_StatusTypeDef transmit_internal(NodeID recipient, const CANMessage *msg, bool is_ack)
 {
 	if (!s_init) return CAN_WRAPPER_NOT_INITIALISED;
@@ -232,6 +240,70 @@ static CANWrapper_StatusTypeDef transmit_internal(NodeID recipient, const CANMes
 						.recipient = recipient,
 						.is_ack = is_ack,
 				}
+		};
+
+		// Copy over the message contents (command ID + body).
+		memcpy(&tx_cache_item.msg.cmd, &msg->cmd, CAN_MAX_BODY_SIZE+1);
+
+		TxCache_Push_Back(&s_tx_cache, &tx_cache_item);
+	}
+
+	return status;
+}
+
+
+static CANWrapper_StatusTypeDef transmit_internal_raw(NodeID recipient, const CANMessage *msg, bool is_ack)
+{
+	if (!s_init) return CAN_WRAPPER_NOT_INITIALISED;
+
+	if (HAL_CAN_GetState(s_init_struct.hcan) != HAL_CAN_STATE_READY &&
+			HAL_CAN_GetState(s_init_struct.hcan) != HAL_CAN_STATE_LISTENING)
+	{
+		return CAN_WRAPPER_TX_FAIL_BAD_CAN_STATE;
+	}
+
+	// Define the message header.
+	CAN_TxHeaderTypeDef tx_header = {0};
+	//use the message directly
+	tx_header.StdId = (msg->priority << 5 & PRIORITY_MASK)
+	                | (msg->sender         << 3 & SENDER_MASK)
+	                | (msg->recipient                      << 1 & RECIPIENT_MASK)
+	                | (msg->is_ack                              & ACK_MASK);
+
+	tx_header.IDE = CAN_ID_STD;   // We are using the standard identifier.
+	tx_header.RTR = CAN_RTR_DATA; // We are transmitting data.
+
+	//Making sure that the cmd is defined
+	assert(msg->cmd!=NULL)
+	tx_header.DLC = 1 + cmd_configs[msg->cmd].body_size; // Length = cmd ID + body.
+
+	// Wait to send CAN message.
+	uint16_t limiter = 0;
+	while (HAL_CAN_GetTxMailboxesFreeLevel(s_init_struct.hcan) == 0)
+	{
+		// return if mailboxes aren't being freed.
+		// for reasoning of the limit see:
+		// https://github.com/UMSATS/tsat-utilities-kit/issues/31#issuecomment-2287744661
+		if (limiter >= 4000) return CAN_WRAPPER_TX_MAILBOXES_FULL;
+		limiter++;
+	}
+
+	uint32_t tx_mailbox; // transmit mailbox.
+	HAL_StatusTypeDef status;
+	status = HAL_CAN_AddTxMessage(s_init_struct.hcan, &tx_header, (uint8_t*)&msg, &tx_mailbox);
+
+	if (status == HAL_OK && !msg->is_ack)
+	{
+		// Get timer variables.
+		uint32_t counter_value = __HAL_TIM_GET_COUNTER(s_init_struct.htim);
+		uint32_t rcr_value = s_init_struct.htim->Instance->RCR;
+
+		TxCacheItem tx_cache_item = {
+				.timestamp = {
+						.counter_value = counter_value,
+						.rcr_value = rcr_value
+				},
+				.msg = *msg;
 		};
 
 		// Copy over the message contents (command ID + body).
