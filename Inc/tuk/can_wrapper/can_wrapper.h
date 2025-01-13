@@ -83,4 +83,12 @@ CANWrapper_StatusTypeDef CANWrapper_Poll_Events();
  */
 CANWrapper_StatusTypeDef CANWrapper_Transmit(NodeID recipient, const CANMessage *msg);
 
+
+/**
+ * @brief               Sends a message over CAN with unusual values.
+ *
+ * @param recipient     ID of the intended recipient.
+ * @param msg           See CANMessage definition.
+ */
+CANWrapper_StatusTypeDef CANWrapper_Transmit_Raw(NodeID recipient, const CANMessage *msg);
 #endif /* CAN_WRAPPER_MODULE_INC_CAN_WRAPPER_H_ */
