@@ -90,7 +90,9 @@ ErrorCode CANWrapper_Poll_Errors();
 
 /**
  * @brief              Sends a message over CAN.
- * @warning            This function should not be called from an ISR.
+ * @note               Avoid calling this function from an ISR, unless you are
+ *                     taking precautions to handle any potential errors that
+ *                     may arise as a result.
  *
  * @param recipient    ID of the intended recipient.
  * @param msg          See CANMessage definition.
