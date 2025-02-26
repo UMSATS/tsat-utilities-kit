@@ -37,11 +37,11 @@ typedef struct
 	CAN_HandleTypeDef *hcan;  // pointer to the CAN peripheral handle.
 	TIM_HandleTypeDef *htim;  // pointer to the timer handle.
 
+#ifdef CWM_MODE_RTOS
+	osMessageQueueId_t msg_queue; // Settings for the RTOS queue.
+#else
 	CANMessage *msg_queue_buffer; // A block of memory CAN Wrapper will use to store incoming messages.
 	size_t msg_queue_buffer_size; // Must be multiple of sizeof(CANMessage).
-
-#ifdef CWM_MODE_RTOS
-	CANWrapper_Msg_Task_InitTypeDef msg_task_init_struct; // Settings for the RTOS task.
 #endif
 
 	CANMessageCallback message_callback; // called when a new message is polled.
@@ -63,14 +63,24 @@ CANWrapper_StatusTypeDef CANWrapper_Init(const CANWrapper_InitTypeDef *init_stru
  */
 CANWrapper_StatusTypeDef CANWrapper_Set_Node_ID(NodeID id);
 
+#ifndef CWM_MODE_RTOS
 /**
  * @brief              Polls for new messages and errors.
  * @warning            This function should not be called from an ISR.
  *
  * This is the point where message_callback and error_callback will be called.
- * Does not poll messages in immediate mode.
  */
 CANWrapper_StatusTypeDef CANWrapper_Poll_Events();
+#else
+// This forces the user to think about what they are polling in RTOS mode.
+/**
+ * @brief              Polls for new errors.
+ * @warning            This function should not be called from an ISR.
+ *
+ * This is the point where error_callback will be called.
+ */
+CANWrapper_StatusTypeDef CANWrapper_Poll_Errors();
+#endif
 
 /**
  * @brief              Sends a message over CAN.

@@ -27,8 +27,6 @@ static CANWrapper_InitTypeDef s_init_struct = {0};
 
 // Define message queue.
 #ifdef CWM_MODE_RTOS
-typedef StaticQueue_t osStaticMessageQDef_t;
-static osStaticMessageQDef_t s_msg_queue_control_block;
 static osMessageQueueId_t s_msg_queue;
 #else
 static CANQueue s_msg_queue;
@@ -50,8 +48,12 @@ CANWrapper_StatusTypeDef CANWrapper_Init(const CANWrapper_InitTypeDef *init_stru
 	ASSERT_PARAM(init_struct->message_callback != NULL, CAN_WRAPPER_NULL_ARG);
 	ASSERT_PARAM(init_struct->hcan != NULL, CAN_WRAPPER_NULL_ARG);
 	ASSERT_PARAM(init_struct->htim != NULL, CAN_WRAPPER_NULL_ARG);
+#ifdef CWM_MODE_RTOS
+	ASSERT_PARAM(init_struct->msg_queue != NULL, CAN_WRAPPER_NULL_ARG);
+#else
 	ASSERT_PARAM(init_struct->msg_queue_buffer != NULL, CAN_WRAPPER_NULL_ARG);
 	ASSERT_PARAM(init_struct->msg_queue_buffer_size % sizeof(CANMessage) == 0, CAN_WRAPPER_INVALID_ARG);
+#endif
 
 	s_init_struct = *init_struct;
 
@@ -90,15 +92,8 @@ CANWrapper_StatusTypeDef CANWrapper_Init(const CANWrapper_InitTypeDef *init_stru
 	}
 
 #ifdef CWM_MODE_RTOS
-	const osMessageQueueAttr_t MSG_QUEUE_ATTR = {
-			.name = "CANMessageQueue",
-			.cb_mem = &s_msg_queue_control_block,
-			.cb_size = sizeof(s_msg_queue_control_block),
-			.mq_mem = s_init_struct.msg_queue_buffer,
-			.mq_size = s_init_struct.msg_queue_buffer_size
-	};
-	s_msg_queue = osMessageQueueNew(s_init_struct.msg_queue_buffer_size / sizeof(CANMessage), sizeof(CANMessage), &MSG_QUEUE_ATTR);
-	CANWrapper_Message_Task_Init(&s_init_struct.msg_task_init_struct, s_msg_queue);
+	s_msg_queue = s_init_struct.msg_queue;
+	CANWrapper_Init_Message_Task(s_init_struct.msg_queue);
 #else
 	CANQueue_Init(&s_msg_queue, s_init_struct.msg_queue_buffer, s_init_struct.msg_queue_buffer_size);
 #endif

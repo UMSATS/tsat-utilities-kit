@@ -17,39 +17,25 @@
 // Message queue
 static osMessageQueueId_t s_msg_queue;
 
-// Message task
-typedef StaticTask_t osStaticThreadDef_t;
-static osStaticThreadDef_t s_msg_task_control_block;
-static osThreadId_t s_msg_task;
-
-static void start_msg_task();
-
 // Forward declaration. Defined in can_wrapper.c
 extern CANWrapper_StatusTypeDef CANWrapper_Process_Message(CANMessage *msg);
 
-void CANWrapper_Message_Task_Init(const CANWrapper_Msg_Task_InitTypeDef *init_struct,
-		osMessageQueueId_t msg_queue)
+void CANWrapper_Init_Message_Task(osMessageQueueId_t msg_queue)
 {
 	s_msg_queue = msg_queue;
-	const osThreadAttr_t msg_task_attributes = {
-			.name = "CANMessageTask",
-			.cb_mem = &s_msg_task_control_block,
-			.cb_size = sizeof(s_msg_task_control_block),
-			.stack_mem = init_struct->msg_task_stack_buffer,
-			.stack_size = init_struct->msg_task_stack_size,
-			.priority = init_struct->msg_task_priority,
-	};
-	s_msg_task = osThreadNew(&start_msg_task, NULL, &msg_task_attributes);
 }
 
-static void start_msg_task()
+void CANWrapper_Start_Message_Task()
 {
 	CANMessage msg;
 
 	// Infinite loop.
 	while (1)
 	{
+		// Wait for the next message to arrive.
 		osMessageQueueGet(s_msg_queue, &msg, NULL, osWaitForever);
+
+		// Pass it to the user code.
 		CANWrapper_Process_Message(&msg);
 	}
 	osThreadExit();

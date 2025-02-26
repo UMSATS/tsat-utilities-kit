@@ -13,14 +13,9 @@
 
 #include "cmsis_os.h"
 
-typedef struct
-{
-	osPriority msg_task_priority;    // The priority to assign the message task.
-	uint32_t *msg_task_stack_buffer; // A buffer for the message task stack.
-	size_t msg_task_stack_size;      // The size of the stack buffer in bytes.
-} CANWrapper_Msg_Task_InitTypeDef;
+void CANWrapper_Init_Message_Task(osMessageQueueId_t msg_queue);
 
-void CANWrapper_Message_Task_Init(const CANWrapper_Msg_Task_InitTypeDef *init_struct, osMessageQueueId_t msg_queue);
+void CANWrapper_Start_Message_Task();
 
 #endif
 
