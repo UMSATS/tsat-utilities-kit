@@ -37,22 +37,23 @@ static ErrorQueue s_error_queue = {0};
 
 static bool s_init = false;
 
-static CANWrapper_StatusTypeDef transmit_internal(NodeID recipient, const CANMessage *msg, bool is_ack);
+static ErrorCode transmit_internal(NodeID recipient, const CANMessage *msg, bool is_ack);
+static ErrorCode poll_errors_internal();
 #ifndef CWM_MODE_RTOS
 static void CANWrapper_Process_Message(CANMessage *msg);
 #endif
 
-CANWrapper_StatusTypeDef CANWrapper_Init(const CANWrapper_InitTypeDef *init_struct)
+ErrorCode CANWrapper_Init(const CANWrapper_InitTypeDef *init_struct)
 {
-	ASSERT_PARAM(init_struct->node_id <= NODE_ID_MAX, CAN_WRAPPER_ARG_OUT_OF_RANGE);
-	ASSERT_PARAM(init_struct->message_callback != NULL, CAN_WRAPPER_NULL_ARG);
-	ASSERT_PARAM(init_struct->hcan != NULL, CAN_WRAPPER_NULL_ARG);
-	ASSERT_PARAM(init_struct->htim != NULL, CAN_WRAPPER_NULL_ARG);
+	ASSERT_PARAM(init_struct->node_id <= NODE_ID_MAX, ERR_ARG_OUT_OF_RANGE);
+	ASSERT_PARAM(init_struct->message_callback != NULL, ERR_NULL_ARG);
+	ASSERT_PARAM(init_struct->hcan != NULL, ERR_NULL_ARG);
+	ASSERT_PARAM(init_struct->htim != NULL, ERR_NULL_ARG);
 #ifdef CWM_MODE_RTOS
-	ASSERT_PARAM(init_struct->msg_queue != NULL, CAN_WRAPPER_NULL_ARG);
+	ASSERT_PARAM(init_struct->msg_queue != NULL, ERR_NULL_ARG);
 #else
-	ASSERT_PARAM(init_struct->msg_queue_buffer != NULL, CAN_WRAPPER_NULL_ARG);
-	ASSERT_PARAM(init_struct->msg_queue_buffer_size % sizeof(CANMessage) == 0, CAN_WRAPPER_INVALID_ARG);
+	ASSERT_PARAM(init_struct->msg_queue_buffer != NULL, ERR_NULL_ARG);
+	ASSERT_PARAM(init_struct->msg_queue_buffer_size % sizeof(CANMessage) == 0, ERR_INVALID_ARG);
 #endif
 
 	s_init_struct = *init_struct;
@@ -72,23 +73,23 @@ CANWrapper_StatusTypeDef CANWrapper_Init(const CANWrapper_InitTypeDef *init_stru
 
 	if (HAL_CAN_ConfigFilter(s_init_struct.hcan, &filter_config) != HAL_OK)
 	{
-		return CAN_WRAPPER_FAILED_TO_CONFIG_FILTER;
+		return ERR_CWM_FAILED_TO_CONFIG_FILTER;
 	}
 
 	if (HAL_CAN_Start(s_init_struct.hcan) != HAL_OK)
 	{
-		return CAN_WRAPPER_FAILED_TO_START_CAN;
+		return ERR_CWM_FAILED_TO_START_CAN;
 	}
 
 	// enable CAN interrupt.
 	if (HAL_CAN_ActivateNotification(s_init_struct.hcan, CAN_IT_RX_FIFO0_MSG_PENDING) != HAL_OK)
 	{
-		return CAN_WRAPPER_FAILED_TO_ENABLE_INTERRUPT;
+		return ERR_CWM_FAILED_TO_ENABLE_INTERRUPT;
 	}
 
 	if (HAL_TIM_Base_Start(s_init_struct.htim) != HAL_OK)
 	{
-		return CAN_WRAPPER_FAILED_TO_START_TIMER;
+		return ERR_CWM_FAILED_TO_START_TIMER;
 	}
 
 #ifdef CWM_MODE_RTOS
@@ -102,24 +103,24 @@ CANWrapper_StatusTypeDef CANWrapper_Init(const CANWrapper_InitTypeDef *init_stru
 	s_error_queue = ErrorQueue_Create();
 
 	s_init = true;
-	return CAN_WRAPPER_HAL_OK;
+	return ERR_OK;
 }
 
-CANWrapper_StatusTypeDef CANWrapper_Set_Node_ID(NodeID id)
+ErrorCode CANWrapper_Set_Node_ID(NodeID id)
 {
-	if (!s_init) return CAN_WRAPPER_NOT_INITIALISED;
-	if (id > NODE_ID_MAX) return CAN_WRAPPER_INVALID_ARG;
+	if (!s_init) return ERR_CWM_NOT_INITIALISED;
+	if (id > NODE_ID_MAX) return ERR_INVALID_ARG;
 
 	s_init_struct.node_id = id;
 
-	return CAN_WRAPPER_HAL_OK;
+	return ERR_OK;
 }
 
-CANWrapper_StatusTypeDef CANWrapper_Poll_Events()
-{
-	if (!s_init) return CAN_WRAPPER_NOT_INITIALISED;
-
 #ifndef CWM_MODE_RTOS
+ErrorCode CANWrapper_Poll_Events()
+{
+	if (!s_init) return ERR_CWM_NOT_INITIALISED;
+
 	/**************************************************
 	 *               Message Processing               *
 	 **************************************************/
@@ -130,15 +131,32 @@ CANWrapper_StatusTypeDef CANWrapper_Poll_Events()
 	{
 		CANWrapper_Process_Message(&msg);
 	}
-#endif
+
 	/**************************************************
 	 *                Error Processing                *
 	 **************************************************/
 
+	ErrorCode ec = poll_errors_internal();
+
+	return ec;
+}
+#else
+ErrorCode CANWrapper_Poll_Errors()
+{
+	return poll_errors_internal();
+}
+#endif
+
+ErrorCode poll_errors_internal()
+{
 	// Get timer values.
 	uint32_t counter_value = __HAL_TIM_GET_COUNTER(s_init_struct.htim);
 	uint32_t rcr_value = s_init_struct.htim->Instance->RCR;
 	uint64_t current_tick = counter_value + rcr_value*PERIOD_TICKS;
+
+	/**************************************************
+	 *               Timeout Detection                *
+	 **************************************************/
 
 	// Poll transmission timeout events.
 	while (s_tx_cache.size > 0)
@@ -151,8 +169,8 @@ CANWrapper_StatusTypeDef CANWrapper_Poll_Events()
 
 		bool clock_overflowed = transmission_tick >= timeout_tick;
 		bool timeout_occurred = clock_overflowed ?
-		         ( current_tick >= timeout_tick && current_tick < transmission_tick )
-		       : ( current_tick >= timeout_tick || current_tick < transmission_tick );
+				 ( current_tick >= timeout_tick && current_tick < transmission_tick )
+			   : ( current_tick >= timeout_tick || current_tick < transmission_tick );
 
 		if (timeout_occurred)
 		{
@@ -176,22 +194,22 @@ CANWrapper_StatusTypeDef CANWrapper_Poll_Events()
 		s_init_struct.error_callback(error);
 	}
 
-	return CAN_WRAPPER_HAL_OK;
+	return ERR_OK;
 }
 
-CANWrapper_StatusTypeDef CANWrapper_Transmit(NodeID recipient, const CANMessage *msg)
+ErrorCode CANWrapper_Transmit(NodeID recipient, const CANMessage *msg)
 {
 	return transmit_internal(recipient, msg, false);
 }
 
-static CANWrapper_StatusTypeDef transmit_internal(NodeID recipient, const CANMessage *msg, bool is_ack)
+static ErrorCode transmit_internal(NodeID recipient, const CANMessage *msg, bool is_ack)
 {
-	if (!s_init) return CAN_WRAPPER_NOT_INITIALISED;
+	if (!s_init) return ERR_CWM_NOT_INITIALISED;
 
 	if (HAL_CAN_GetState(s_init_struct.hcan) != HAL_CAN_STATE_READY &&
 			HAL_CAN_GetState(s_init_struct.hcan) != HAL_CAN_STATE_LISTENING)
 	{
-		return CAN_WRAPPER_TX_FAIL_BAD_CAN_STATE;
+		return ERR_CWM_TX_FAIL_BAD_CAN_STATE;
 	}
 
 	// Define the message header.
@@ -211,7 +229,7 @@ static CANWrapper_StatusTypeDef transmit_internal(NodeID recipient, const CANMes
 		// return if mailboxes aren't being freed.
 		// for reasoning of the limit see:
 		// https://github.com/UMSATS/tsat-utilities-kit/issues/31#issuecomment-2287744661
-		if (limiter >= 4000) return CAN_WRAPPER_TX_MAILBOXES_FULL;
+		if (limiter >= 4000) return ERR_CWM_TX_MAILBOXES_FULL;
 		limiter++;
 	}
 

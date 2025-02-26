@@ -10,7 +10,7 @@
 
 #include "tuk/can_wrapper/msg_task.h"
 #include "tuk/can_wrapper/can_message.h"
-#include "tuk/can_wrapper/can_wrapper_status.h"
+#include "tuk/error_list.h"
 
 #include "cmsis_os.h"
 
@@ -18,7 +18,7 @@
 static osMessageQueueId_t s_msg_queue;
 
 // Forward declaration. Defined in can_wrapper.c
-extern CANWrapper_StatusTypeDef CANWrapper_Process_Message(CANMessage *msg);
+extern ErrorCode CANWrapper_Process_Message(CANMessage *msg);
 
 void CANWrapper_Init_Message_Task(osMessageQueueId_t msg_queue)
 {
