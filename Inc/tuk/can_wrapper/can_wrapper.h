@@ -95,8 +95,9 @@ ErrorCode CANWrapper_Poll_Errors();
  *                     may arise as a result.
  *
  * @param recipient    ID of the intended recipient.
- * @param msg          See CANMessage definition.
+ * @param cmd_id       Command being sent. This determines what goes in `body`.
+ * @param body         The bytes to transmit.
  */
-ErrorCode CANWrapper_Transmit(NodeID recipient, const CANMessage *msg);
+ErrorCode CANWrapper_Transmit(NodeID recipient, CmdID cmd_id, const uint8_t *body);
 
 #endif /* CAN_WRAPPER_MODULE_INC_CAN_WRAPPER_H_ */

@@ -37,7 +37,7 @@ static ErrorQueue s_error_queue = {0};
 
 static bool s_init = false;
 
-static ErrorCode transmit_internal(NodeID recipient, const CANMessage *msg, bool is_ack);
+static ErrorCode transmit_internal(NodeID recipient, CmdID cmd_id, const uint8_t *body, bool is_ack);
 static ErrorCode poll_errors_internal();
 #ifndef CWM_MODE_RTOS
 static void CANWrapper_Process_Message(CANMessage *msg);
@@ -197,12 +197,12 @@ ErrorCode poll_errors_internal()
 	return ERR_OK;
 }
 
-ErrorCode CANWrapper_Transmit(NodeID recipient, const CANMessage *msg)
+ErrorCode CANWrapper_Transmit(NodeID recipient, CmdID cmd_id, const uint8_t *body)
 {
-	return transmit_internal(recipient, msg, false);
+	return transmit_internal(recipient, cmd_id, body, false);
 }
 
-static ErrorCode transmit_internal(NodeID recipient, const CANMessage *msg, bool is_ack)
+ErrorCode transmit_internal(NodeID recipient, CmdID cmd_id, const uint8_t *body, bool is_ack)
 {
 	if (!s_init) return ERR_CWM_NOT_INITIALISED;
 
@@ -214,13 +214,13 @@ static ErrorCode transmit_internal(NodeID recipient, const CANMessage *msg, bool
 
 	// Define the message header.
 	CAN_TxHeaderTypeDef tx_header = {0};
-	tx_header.StdId = (cmd_configs[msg->cmd].priority << 5 & PRIORITY_MASK)
+	tx_header.StdId = (cmd_configs[cmd_id].priority << 5 & PRIORITY_MASK)
 	                | (s_init_struct.node_id          << 3 & SENDER_MASK)
 	                | (recipient                      << 1 & RECIPIENT_MASK)
 	                | (is_ack                              & ACK_MASK);
 	tx_header.IDE = CAN_ID_STD;   // We are using the standard identifier.
 	tx_header.RTR = CAN_RTR_DATA; // We are transmitting data.
-	tx_header.DLC = 1 + cmd_configs[msg->cmd].body_size; // Length = cmd ID + body.
+	tx_header.DLC = 1 + cmd_configs[cmd_id].body_size; // Length = cmd ID + body.
 
 	// Wait to send CAN message.
 	uint16_t limiter = 0;
@@ -235,7 +235,7 @@ static ErrorCode transmit_internal(NodeID recipient, const CANMessage *msg, bool
 
 	uint32_t tx_mailbox; // transmit mailbox.
 	HAL_StatusTypeDef status;
-	status = HAL_CAN_AddTxMessage(s_init_struct.hcan, &tx_header, (uint8_t*)&msg, &tx_mailbox);
+	status = HAL_CAN_AddTxMessage(s_init_struct.hcan, &tx_header, body, &tx_mailbox);
 
 	if (status == HAL_OK && !is_ack)
 	{
@@ -249,7 +249,7 @@ static ErrorCode transmit_internal(NodeID recipient, const CANMessage *msg, bool
 						.rcr_value = rcr_value
 				},
 				.msg = {
-						.priority = cmd_configs[msg->cmd].priority,
+						.priority = cmd_configs[cmd_id].priority,
 						.sender = s_init_struct.node_id,
 						.recipient = recipient,
 						.is_ack = is_ack,
@@ -257,7 +257,8 @@ static ErrorCode transmit_internal(NodeID recipient, const CANMessage *msg, bool
 		};
 
 		// Copy over the message contents (command ID + body).
-		memcpy(&tx_cache_item.msg.cmd, &msg->cmd, CAN_MAX_BODY_SIZE+1);
+		tx_cache_item.msg.cmd = cmd_id;
+		memcpy(&tx_cache_item.msg.body, body, CAN_MAX_BODY_SIZE);
 
 		TxCache_Push_Back(&s_tx_cache, &tx_cache_item);
 	}
@@ -321,7 +322,7 @@ void CANWrapper_Process_Message(CANMessage *msg)
 	else
 	{
 		// Acknowledge the received message.
-		transmit_internal(msg->sender, msg, true);
+		transmit_internal(msg->sender, msg->cmd, msg->body, true);
 
 		// Execute the command.
 		s_init_struct.message_callback(*msg);
