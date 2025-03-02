@@ -43,15 +43,15 @@ typedef struct
 // switches to a big-endian processor, that subsystem will have to perform a
 // byte swap of the message contents.
 
-// Example Usage: float arg = GET_ARG(msg, 0, float);
-#define GET_ARG(msg, pos, type) ({ \
+// Example Usage: float arg = GET_MSG_DATA(msg, 0, float);
+#define GET_MSG_DATA(msg, pos, type) ({ \
 	type var; \
 	memcpy(&var, &msg.body[pos], sizeof(var)); \
 	var; \
 	})
 
-// Example Usage: SET_ARG(msg, 0, uint8_t, 32);
-#define SET_ARG(msg, pos, type, value) do { \
+// Example Usage: SET_MSG_DATA(msg, 0, uint8_t, 32);
+#define SET_MSG_DATA(msg, pos, type, value) do { \
 	type var = value; \
 	memcpy(&msg.body[pos], &var, sizeof(var)); \
 	} while (0)

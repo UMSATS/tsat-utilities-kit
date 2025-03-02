@@ -9,56 +9,60 @@
 #define CAN_WRAPPER_MODULE_INC_CAN_QUEUE_H_
 
 #include "can_message.h"
+#include "tuk/error_list.h"
 
 #include <stdbool.h>
 #include <stdint.h>
 #include <stddef.h>
 
-#define CAN_QUEUE_SIZE 100
-
-typedef struct
-{
-	CANMessage msg;
-} CANQueueItem;
-
 typedef struct
 {
     uint32_t head;
     uint32_t tail;
-    CANQueueItem items[CAN_QUEUE_SIZE];
+    CANMessage *buffer;
+    size_t max_size;
 } CANQueue;
 
 /**
- * @brief               Creates an empty message queue.
- */
-CANQueue CANQueue_Create();
-
-/**
- * @brief               Returns true if the given queue is empty.
- */
-bool CANQueue_IsEmpty(const CANQueue* queue);
-
-/**
- * @brief               Returns true if the given queue is full.
- */
-bool CANQueue_IsFull(const CANQueue* queue);
-
-/**
- * @brief               Enqueues a message into the given queue.
+ * @brief              Initialises an empty message queue.
  *
- * @param queue         The CAN message queue.
- * @param message       The CAN message to enqueue.
- * @return              true on success. false on fail.
+ * @param queue        The queue to initialise.
+ * @param buffer       A buffer for storing messages. Must be multiples of sizeof(CANMessage).
+ * @param buffer_size  The size of the buffer in bytes.
  */
-bool CANQueue_Enqueue(CANQueue* queue, CANQueueItem message);
+ErrorCode CANQueue_Init(CANQueue *queue, CANMessage *buffer, size_t buffer_size);
 
 /**
- * @brief:              Dequeues a message out of the given queue.
+ * @brief              Returns true if the given queue is empty.
  *
- * @param queue         The CAN message queue.
- * @param out_message   The output location for CAN message.
- * @return              true on success. false on fail.
+ * @param queue        The CAN message queue.
+ * @param result
  */
-bool CANQueue_Dequeue(CANQueue* queue, CANQueueItem* out_message);
+ErrorCode CANQueue_IsEmpty(const CANQueue* queue, bool *result);
+
+/**
+ * @brief              Returns true if the given queue is full.
+ *
+ * @param queue        The CAN message queue.
+ * @param result
+ */
+ErrorCode CANQueue_IsFull(const CANQueue* queue, bool *result);
+
+/**
+ * @brief              Enqueues a message into the given queue.
+ * @warning            msg must not point to a location inside the queue buffer.
+ *
+ * @param queue        The CAN message queue.
+ * @param msg          The message to enqueue.
+ */
+ErrorCode CANQueue_Enqueue(CANQueue* queue, const CANMessage *msg);
+
+/**
+ * @brief:             Dequeues a message out of the given queue.
+ *
+ * @param queue        The CAN message queue.
+ * @param out          The output location for CAN message.
+ */
+ErrorCode CANQueue_Dequeue(CANQueue* queue, CANMessage *out);
 
 #endif /* CAN_WRAPPER_MODULE_INC_CAN_QUEUE_H_ */

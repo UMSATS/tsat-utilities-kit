@@ -5,46 +5,80 @@
  * Implemented using circular buffer.
  */
 
-#include <tuk/can_wrapper/can_queue.h>
+#include "tuk/can_wrapper/can_queue.h"
+#include "tuk/error_list.h"
+#include "tuk/debug.h"
 
-CANQueue CANQueue_Create()
+#include <stdbool.h>
+#include <memory.h>
+
+#define BUFFER_MAX 10240 // Anything over 10KB is nonsense.
+
+ErrorCode CANQueue_Init(CANQueue *queue, CANMessage *buffer, size_t buffer_size)
 {
-	CANQueue queue;
+	ASSERT_PARAM(queue != NULL, ERR_NULL_ARG);
+	ASSERT_PARAM(buffer != NULL, ERR_NULL_ARG);
+	ASSERT_PARAM(buffer_size <= BUFFER_MAX, ERR_ARG_OUT_OF_RANGE);
+	ASSERT_PARAM(buffer_size % sizeof(CANMessage) == 0, ERR_INVALID_ARG);
 
-    queue.head = 0;
-    queue.tail = 0;
+	CANQueue q = {0};
 
-    return queue;
+	q.head = 0;
+	q.tail = 0;
+	q.buffer = buffer;
+	q.max_size = buffer_size / sizeof(CANMessage);
+
+	*queue = q;
+
+	return ERR_OK;
 }
 
-bool CANQueue_IsEmpty(const CANQueue* queue)
+ErrorCode CANQueue_IsEmpty(const CANQueue *queue, bool *result)
 {
-    return queue->head == queue->tail;
+	ASSERT_PARAM(queue != NULL, ERR_NULL_ARG);
+	ASSERT_PARAM(result != NULL, ERR_NULL_ARG);
+
+	*result = queue->head == queue->tail;
+	return ERR_OK;
 }
 
-bool CANQueue_IsFull(const CANQueue* queue)
+ErrorCode CANQueue_IsFull(const CANQueue *queue, bool *result)
 {
-    return (queue->tail + 1) % CAN_QUEUE_SIZE == queue->head;
+	ASSERT_PARAM(queue != NULL, ERR_NULL_ARG);
+	ASSERT_PARAM(result != NULL, ERR_NULL_ARG);
+
+	*result = (queue->tail + 1) % queue->max_size == queue->head;
+	return ERR_OK;
 }
 
-bool CANQueue_Enqueue(CANQueue* queue, CANQueueItem item)
+ErrorCode CANQueue_Enqueue(CANQueue *queue, const CANMessage *msg)
 {
-    if (CANQueue_IsFull(queue))
-        return false;
+	ASSERT_PARAM(queue != NULL, ERR_NULL_ARG);
+	ASSERT_PARAM(msg != NULL, ERR_NULL_ARG);
 
-    queue->items[queue->tail] = item;
-    queue->tail = (queue->tail + 1) % CAN_QUEUE_SIZE;
+	bool is_full;
+	CANQueue_IsFull(queue, &is_full);
+	if (is_full)
+		return ERR_QUEUE_FULL;
 
-    return true;
+	memcpy(&queue->buffer[queue->tail], msg, sizeof(CANMessage));
+	queue->tail = (queue->tail + 1) % queue->max_size;
+
+	return ERR_OK;
 }
 
-bool CANQueue_Dequeue(CANQueue* queue, CANQueueItem* out)
+ErrorCode CANQueue_Dequeue(CANQueue *queue, CANMessage *out)
 {
-    if (CANQueue_IsEmpty(queue))
-        return false;
+	ASSERT_PARAM(queue != NULL, ERR_NULL_ARG);
+	ASSERT_PARAM(out != NULL, ERR_NULL_ARG);
 
-    *out = queue->items[queue->head];
-	queue->head = (queue->head + 1) % CAN_QUEUE_SIZE;
+	bool is_empty;
+	CANQueue_IsEmpty(queue, &is_empty);
+	if (is_empty)
+		return ERR_QUEUE_EMPTY;
 
-    return true;
+	memcpy(out, &queue->buffer[queue->head], sizeof(CANMessage));
+	queue->head = (queue->head + 1) % queue->max_size;
+
+	return ERR_OK;
 }
