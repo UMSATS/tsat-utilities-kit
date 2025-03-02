@@ -5,6 +5,8 @@
 #ifndef TSAT_UTILITIES_KIT_INC_TUK_ERROR_LIST_H_
 #define TSAT_UTILITIES_KIT_INC_TUK_ERROR_LIST_H_
 
+#include <assert.h>
+
 typedef enum {
 	// HAL STATUS CODES
 	ERR_OK = 0,                // No Error.
@@ -62,5 +64,7 @@ typedef enum {
 	ERR_PLD_TCA9548_INVALID_CHANNEL,
 	ERR_PLD_TCA9548_SET_CHANNEL,
 } ErrorCode;
+
+_Static_assert(sizeof(ErrorCode) == 1, "Enum size is not 8 bits");
 
 #endif /* TSAT_UTILITIES_KIT_INC_TUK_ERROR_LIST_H_ */
