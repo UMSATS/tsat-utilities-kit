@@ -43,17 +43,17 @@ typedef struct
 // switches to a big-endian processor, that subsystem will have to perform a
 // byte swap of the message contents.
 
-// Example Usage: float arg = GET_MSG_DATA(msg, 0, float);
-#define GET_MSG_DATA(msg, pos, type) ({ \
+// Example Usage: float arg = GET_MSG_DATA(msg.body, 0, float);
+#define GET_MSG_DATA(body, pos, type) ({ \
 	type var; \
-	memcpy(&var, &msg.body[pos], sizeof(var)); \
+	memcpy(&var, &body[pos], sizeof(var)); \
 	var; \
 	})
 
-// Example Usage: SET_MSG_DATA(msg, 0, uint8_t, 32);
-#define SET_MSG_DATA(msg, pos, type, value) do { \
+// Example Usage: SET_MSG_DATA(byte_array, 0, uint8_t, 29);
+#define SET_MSG_DATA(body, pos, type, value) do { \
 	type var = value; \
-	memcpy(&msg.body[pos], &var, sizeof(var)); \
+	memcpy(&body[pos], &var, sizeof(var)); \
 	} while (0)
 
 #endif /* CAN_WRAPPER_MODULE_INC_CAN_MESSAGE_H_ */
