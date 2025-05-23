@@ -30,24 +30,14 @@
 #include <stdint.h>
 #include <stddef.h>
 
-typedef void (*CANMessageCallback)(CANMessage);
+typedef void (*CANMessageCallback)(CAN_HandleTypeDef*, CANMessage);
 typedef void (*CANErrorCallback)(CANWrapper_ErrorInfo);
 
 typedef struct
 {
 	NodeID node_id;           // your subsystem's unique ID in the CAN network.
-
-	CAN_HandleTypeDef *hcan;  // pointer to the CAN peripheral handle.
 	TIM_HandleTypeDef *htim;  // pointer to the timer handle.
-
-#ifdef CWM_MODE_RTOS
-	osMessageQueueId_t msg_queue; // Settings for the RTOS queue.
-#else
-	CANMessage *msg_queue_buffer; // A block of memory CAN Wrapper will use to store incoming messages.
-	size_t msg_queue_buffer_size; // Must be multiple of sizeof(CANMessage).
-#endif
-
-	CANMessageCallback message_callback; // called when a new message is polled.
+	CANMessageCallback message_callback; // called when a new message is received.
 	CANErrorCallback error_callback;     // called when an error occurs.
 } CANWrapper_InitTypeDef;
 
@@ -66,27 +56,13 @@ ErrorCode CANWrapper_Init(const CANWrapper_InitTypeDef *init_struct);
  */
 ErrorCode CANWrapper_Set_Node_ID(NodeID id);
 
-#ifndef CWM_MODE_RTOS
-/**
- * @brief              Polls for new messages and errors.
- * @warning            This function should not be called from an ISR.
- * @note               Only available when compiling in Manual or Normal mode.
- *
- * This is the point where message_callback and error_callback will be called.
- */
-ErrorCode CANWrapper_Poll_Events();
-#else
-// Switch to Poll_Errors function for RTOS applications. This forces the user to
-// think about what they are polling, which is important when working with RTOS.
 /**
  * @brief              Polls for new errors.
  * @warning            This function should not be called from an ISR.
- * @note               Only available when compiling in RTOS mode.
  *
  * This is the point where error_callback will be called.
  */
 ErrorCode CANWrapper_Poll_Errors();
-#endif
 
 /**
  * @brief              Sends a message over CAN.
@@ -98,6 +74,6 @@ ErrorCode CANWrapper_Poll_Errors();
  * @param cmd_id       Command being sent. This determines what goes in `body`.
  * @param body         The bytes to transmit.
  */
-ErrorCode CANWrapper_Transmit(NodeID recipient, CmdID cmd_id, const uint8_t *body);
+ErrorCode CANWrapper_Transmit(CAN_HandleTypeDef *hcan, NodeID recipient, CmdID cmd_id, const uint8_t *body);
 
 #endif /* CAN_WRAPPER_MODULE_INC_CAN_WRAPPER_H_ */

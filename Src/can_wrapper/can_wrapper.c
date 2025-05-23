@@ -25,39 +25,38 @@
 
 static CANWrapper_InitTypeDef s_init_struct = {0};
 
-// Define message queue.
-#ifdef CWM_MODE_RTOS
-static osMessageQueueId_t s_msg_queue;
-#else
-static CANQueue s_msg_queue;
-#endif
-
 static TxCache s_tx_cache = {0};
 static ErrorQueue s_error_queue = {0};
 
 static bool s_init = false;
 
-static ErrorCode transmit_internal(NodeID recipient, CmdID cmd_id, const uint8_t *body, bool is_ack);
-static ErrorCode poll_errors_internal();
+static ErrorCode transmit_internal(CAN_HandleTypeDef *hcan, NodeID recipient, CmdID cmd_id, const uint8_t *body, bool is_ack);
 #ifndef CWM_MODE_RTOS
-static void CANWrapper_Process_Message(CANMessage *msg);
+static void CANWrapper_Process_Message(CAN_HandleTypeDef *hcan, CANMessage *msg);
 #endif
 
 ErrorCode CANWrapper_Init(const CANWrapper_InitTypeDef *init_struct)
 {
 	ASSERT_PARAM(init_struct->node_id <= NODE_ID_MAX, ERR_ARG_OUT_OF_RANGE);
 	ASSERT_PARAM(init_struct->message_callback != NULL, ERR_NULL_ARG);
-	ASSERT_PARAM(init_struct->hcan != NULL, ERR_NULL_ARG);
 	ASSERT_PARAM(init_struct->htim != NULL, ERR_NULL_ARG);
-#ifdef CWM_MODE_RTOS
-	ASSERT_PARAM(init_struct->msg_queue != NULL, ERR_NULL_ARG);
-#else
-	ASSERT_PARAM(init_struct->msg_queue_buffer != NULL, ERR_NULL_ARG);
-	ASSERT_PARAM(init_struct->msg_queue_buffer_size % sizeof(CANMessage) == 0, ERR_INVALID_ARG);
-#endif
 
 	s_init_struct = *init_struct;
 
+	if (HAL_TIM_Base_Start(s_init_struct.htim) != HAL_OK)
+	{
+		return ERR_CWM_FAILED_TO_START_TIMER;
+	}
+
+	s_tx_cache = TxCache_Create();
+	s_error_queue = ErrorQueue_Create();
+
+	s_init = true;
+	return ERR_OK;
+}
+
+ErrorCode CANWrapper_Register_Handle(CAN_HandleTypeDef *hcan)
+{
 	const CAN_FilterTypeDef filter_config = {
 			.FilterIdHigh         = 0x0000,
 			.FilterIdLow          = 0x0000,
@@ -71,39 +70,21 @@ ErrorCode CANWrapper_Init(const CANWrapper_InitTypeDef *init_struct)
 			.SlaveStartFilterBank = 14,
 	};
 
-	if (HAL_CAN_ConfigFilter(s_init_struct.hcan, &filter_config) != HAL_OK)
+	if (HAL_CAN_ConfigFilter(hcan, &filter_config) != HAL_OK)
 	{
 		return ERR_CWM_FAILED_TO_CONFIG_FILTER;
 	}
 
-	if (HAL_CAN_Start(s_init_struct.hcan) != HAL_OK)
+	if (HAL_CAN_Start(hcan) != HAL_OK)
 	{
 		return ERR_CWM_FAILED_TO_START_CAN;
 	}
 
 	// enable CAN interrupt.
-	if (HAL_CAN_ActivateNotification(s_init_struct.hcan, CAN_IT_RX_FIFO0_MSG_PENDING) != HAL_OK)
+	if (HAL_CAN_ActivateNotification(hcan, CAN_IT_RX_FIFO0_MSG_PENDING) != HAL_OK)
 	{
 		return ERR_CWM_FAILED_TO_ENABLE_INTERRUPT;
 	}
-
-	if (HAL_TIM_Base_Start(s_init_struct.htim) != HAL_OK)
-	{
-		return ERR_CWM_FAILED_TO_START_TIMER;
-	}
-
-#ifdef CWM_MODE_RTOS
-	s_msg_queue = s_init_struct.msg_queue;
-	CANWrapper_Init_Message_Task(s_init_struct.msg_queue);
-#else
-	CANQueue_Init(&s_msg_queue, s_init_struct.msg_queue_buffer, s_init_struct.msg_queue_buffer_size);
-#endif
-
-	s_tx_cache = TxCache_Create();
-	s_error_queue = ErrorQueue_Create();
-
-	s_init = true;
-	return ERR_OK;
 }
 
 ErrorCode CANWrapper_Set_Node_ID(NodeID id)
@@ -116,38 +97,7 @@ ErrorCode CANWrapper_Set_Node_ID(NodeID id)
 	return ERR_OK;
 }
 
-#ifndef CWM_MODE_RTOS
-ErrorCode CANWrapper_Poll_Events()
-{
-	if (!s_init) return ERR_CWM_NOT_INITIALISED;
-
-	/**************************************************
-	 *               Message Processing               *
-	 **************************************************/
-
-	// Process incoming message queue.
-	CANMessage msg;
-	while (ERR_OK == CANQueue_Dequeue(&s_msg_queue, &msg))
-	{
-		CANWrapper_Process_Message(&msg);
-	}
-
-	/**************************************************
-	 *                Error Processing                *
-	 **************************************************/
-
-	ErrorCode ec = poll_errors_internal();
-
-	return ec;
-}
-#else
 ErrorCode CANWrapper_Poll_Errors()
-{
-	return poll_errors_internal();
-}
-#endif
-
-ErrorCode poll_errors_internal()
 {
 	// Get timer values.
 	uint32_t counter_value = __HAL_TIM_GET_COUNTER(s_init_struct.htim);
@@ -197,17 +147,17 @@ ErrorCode poll_errors_internal()
 	return ERR_OK;
 }
 
-ErrorCode CANWrapper_Transmit(NodeID recipient, CmdID cmd_id, const uint8_t *body)
+ErrorCode CANWrapper_Transmit(CAN_HandleTypeDef *hcan, NodeID recipient, CmdID cmd_id, const uint8_t *body)
 {
-	return transmit_internal(recipient, cmd_id, body, false);
+	return transmit_internal(hcan, recipient, cmd_id, body, false);
 }
 
-ErrorCode transmit_internal(NodeID recipient, CmdID cmd_id, const uint8_t *body, bool is_ack)
+ErrorCode transmit_internal(CAN_HandleTypeDef *hcan, NodeID recipient, CmdID cmd_id, const uint8_t *body, bool is_ack)
 {
 	if (!s_init) return ERR_CWM_NOT_INITIALISED;
 
-	if (HAL_CAN_GetState(s_init_struct.hcan) != HAL_CAN_STATE_READY &&
-			HAL_CAN_GetState(s_init_struct.hcan) != HAL_CAN_STATE_LISTENING)
+	if (HAL_CAN_GetState(hcan) != HAL_CAN_STATE_READY &&
+			HAL_CAN_GetState(hcan) != HAL_CAN_STATE_LISTENING)
 	{
 		return ERR_CWM_TX_FAIL_BAD_CAN_STATE;
 	}
@@ -224,7 +174,7 @@ ErrorCode transmit_internal(NodeID recipient, CmdID cmd_id, const uint8_t *body,
 
 	// Wait to send CAN message.
 	uint16_t limiter = 0;
-	while (HAL_CAN_GetTxMailboxesFreeLevel(s_init_struct.hcan) == 0)
+	while (HAL_CAN_GetTxMailboxesFreeLevel(hcan) == 0)
 	{
 		// return if mailboxes aren't being freed.
 		// for reasoning of the limit see:
@@ -235,7 +185,7 @@ ErrorCode transmit_internal(NodeID recipient, CmdID cmd_id, const uint8_t *body,
 
 	uint32_t tx_mailbox; // transmit mailbox.
 	HAL_StatusTypeDef status;
-	status = HAL_CAN_AddTxMessage(s_init_struct.hcan, &tx_header, body, &tx_mailbox);
+	status = HAL_CAN_AddTxMessage(hcan, &tx_header, body, &tx_mailbox);
 
 	if (status == HAL_OK && !is_ack)
 	{
@@ -269,44 +219,29 @@ ErrorCode transmit_internal(NodeID recipient, CmdID cmd_id, const uint8_t *body,
 // called by HAL when a new CAN message is received and pending.
 void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 {
-	if (hcan == s_init_struct.hcan)
-	{
-		HAL_StatusTypeDef status;
+	HAL_StatusTypeDef status;
 
-		// Create an item to be placed into the queue.
-		CANMessage msg = {0};
+	// Create an item to be placed into the queue.
+	CANMessage msg = {0};
 
-		// Retrieve the message header and body.
-		CAN_RxHeaderTypeDef rx_header;
-		status = HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &rx_header, (uint8_t*)&msg.cmd);
+	// Retrieve the message header and body.
+	CAN_RxHeaderTypeDef rx_header;
+	status = HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &rx_header, (uint8_t*)&msg.cmd);
 
-		if (status != HAL_OK)
-			return; // in theory this should never happen. :p
+	if (status != HAL_OK)
+		return; // in theory this should never happen. :p
 
-		// Extract all the metadata from the header.
-		msg.priority  = (PRIORITY_MASK & rx_header.StdId) >> 5;
-		msg.sender    = (SENDER_MASK & rx_header.StdId) >> 3;
-		msg.recipient = (RECIPIENT_MASK & rx_header.StdId) >> 1;
-		msg.is_ack    = ACK_MASK & rx_header.StdId;
+	// Extract all the metadata from the header.
+	msg.priority  = (PRIORITY_MASK & rx_header.StdId) >> 5;
+	msg.sender    = (SENDER_MASK & rx_header.StdId) >> 3;
+	msg.recipient = (RECIPIENT_MASK & rx_header.StdId) >> 1;
+	msg.is_ack    = ACK_MASK & rx_header.StdId;
 
-#ifdef CWM_MODE_MANUAL
-		// Enqueue all traffic.
-		IGNORE_FAIL(CANQueue_Enqueue(&s_msg_queue, &msg));
-#else
-		// Check if the message is for us. (TODO: consider CAN filtering instead)
-		if (msg.recipient == s_init_struct.node_id && msg.sender != s_init_struct.node_id)
-		{
-#if defined(CWM_MODE_NORMAL)
-			IGNORE_FAIL(CANQueue_Enqueue(&s_msg_queue, &msg));
-#elif defined(CWM_MODE_RTOS)
-			IGNORE_FAIL(osMessageQueuePut(s_msg_queue, &msg, 0, 0));
-#endif
-		}
-#endif
-	}
+	// Pass the message to the user callback.
+	s_init_struct.message_callback(hcan, msg);
 }
 
-void CANWrapper_Process_Message(CANMessage *msg)
+void CANWrapper_Process_Message(CAN_HandleTypeDef *hcan, CANMessage *msg)
 {
 	if (msg->is_ack)
 	{
@@ -315,19 +250,11 @@ void CANWrapper_Process_Message(CANMessage *msg)
 		int index = TxCache_Find(&s_tx_cache, msg);
 		TxCache_Erase(&s_tx_cache, index);
 	}
-#ifdef CWM_MODE_MANUAL
-	// Pass all messages to the user callback.
-	s_init_struct.message_callback(*msg);
-#else
 	else
 	{
 		// Acknowledge the received message.
-		transmit_internal(msg->sender, msg->cmd, msg->body, true);
-
-		// Execute the command.
-		s_init_struct.message_callback(*msg);
+		transmit_internal(hcan, msg->sender, msg->cmd, msg->body, true);
 	}
-#endif
 }
 
 void HAL_CAN_ErrorCallback(CAN_HandleTypeDef *hcan)
