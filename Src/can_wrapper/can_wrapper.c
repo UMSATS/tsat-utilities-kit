@@ -23,6 +23,19 @@
 
 #define PERIOD_TICKS 5000
 
+static const CAN_FilterTypeDef filter_config = {
+		.FilterIdHigh         = 0x0000,
+		.FilterIdLow          = 0x0000,
+		.FilterMaskIdHigh     = 0x0000,
+		.FilterMaskIdLow      = 0x0000,
+		.FilterFIFOAssignment = CAN_FILTER_FIFO0,
+		.FilterBank           = 0,
+		.FilterMode           = CAN_FILTERMODE_IDMASK,
+		.FilterScale          = CAN_FILTERSCALE_32BIT,
+		.FilterActivation     = ENABLE,
+		.SlaveStartFilterBank = 14,
+};
+
 static CANWrapper_InitTypeDef s_init_struct = {0};
 
 static TxCache s_tx_cache = {0};
@@ -55,21 +68,8 @@ ErrorCode CANWrapper_Init(const CANWrapper_InitTypeDef *init_struct)
 	return ERR_OK;
 }
 
-ErrorCode CANWrapper_Register_Handle(CAN_HandleTypeDef *hcan)
+ErrorCode CANWrapper_CAN_Start(CAN_HandleTypeDef *hcan)
 {
-	const CAN_FilterTypeDef filter_config = {
-			.FilterIdHigh         = 0x0000,
-			.FilterIdLow          = 0x0000,
-			.FilterMaskIdHigh     = 0x0000,
-			.FilterMaskIdLow      = 0x0000,
-			.FilterFIFOAssignment = CAN_FILTER_FIFO0,
-			.FilterBank           = 0,
-			.FilterMode           = CAN_FILTERMODE_IDMASK,
-			.FilterScale          = CAN_FILTERSCALE_32BIT,
-			.FilterActivation     = ENABLE,
-			.SlaveStartFilterBank = 14,
-	};
-
 	if (HAL_CAN_ConfigFilter(hcan, &filter_config) != HAL_OK)
 	{
 		return ERR_CWM_FAILED_TO_CONFIG_FILTER;

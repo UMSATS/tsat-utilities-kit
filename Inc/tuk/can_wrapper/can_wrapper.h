@@ -50,6 +50,13 @@ typedef struct
 ErrorCode CANWrapper_Init(const CANWrapper_InitTypeDef *init_struct);
 
 /**
+ * @brief              Initializes and starts a CAN peripheral.
+ *
+ * @param hcan         Handle of the peripheral.
+ */
+ErrorCode CANWrapper_CAN_Start(CAN_HandleTypeDef *hcan);
+
+/**
  * @brief              Sets the user's node ID (for advanced usage only).
  *
  * @param id           The new ID to be set.
@@ -70,6 +77,7 @@ ErrorCode CANWrapper_Poll_Errors();
  *                     taking precautions to handle any potential errors that
  *                     may arise as a result.
  *
+ * @param hcan         Handle of the CAN peripheral.
  * @param recipient    ID of the intended recipient.
  * @param cmd_id       Command being sent. This determines what goes in `body`.
  * @param body         The bytes to transmit.
