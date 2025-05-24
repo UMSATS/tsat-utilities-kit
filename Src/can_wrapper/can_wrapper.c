@@ -44,9 +44,7 @@ static ErrorQueue s_error_queue = {0};
 static bool s_init = false;
 
 static ErrorCode transmit_internal(CAN_HandleTypeDef *hcan, NodeID recipient, CmdID cmd_id, const uint8_t *body, bool is_ack);
-#ifndef CWM_MODE_RTOS
 static void CANWrapper_Process_Message(CAN_HandleTypeDef *hcan, CANMessage *msg);
-#endif
 
 ErrorCode CANWrapper_Init(const CANWrapper_InitTypeDef *init_struct)
 {

@@ -10,15 +10,10 @@
 
 #include "can_command_list.h"
 #include "can_message.h"
+#include "can_queue.h"
 #include "error_info.h"
 #include "error_queue.h"
 #include "telemetry_id.h"
-#include "cwm_mode.h"
-
-#ifdef CWM_MODE_RTOS
-#include "msg_task.h"
-#include "cmsis_os.h"
-#endif
 
 #include "tuk/error_list.h"
 
