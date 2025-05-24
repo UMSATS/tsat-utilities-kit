@@ -85,6 +85,8 @@ ErrorCode CANWrapper_CAN_Start(CAN_HandleTypeDef *hcan)
 	{
 		return ERR_CWM_FAILED_TO_ENABLE_INTERRUPT;
 	}
+
+	return ERR_OK;
 }
 
 ErrorCode CANWrapper_Set_Node_ID(NodeID id)
