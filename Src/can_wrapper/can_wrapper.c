@@ -44,7 +44,6 @@ static ErrorQueue s_error_queue = {0};
 static bool s_init = false;
 
 static ErrorCode transmit_internal(CAN_HandleTypeDef *hcan, NodeID recipient, CmdID cmd_id, const uint8_t *body, bool is_ack);
-static void CANWrapper_Process_Message(CAN_HandleTypeDef *hcan, CANMessage *msg);
 
 ErrorCode CANWrapper_Init(const CANWrapper_InitTypeDef *init_struct)
 {
@@ -241,20 +240,17 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 	s_init_struct.message_callback(hcan, msg);
 }
 
-void CANWrapper_Process_Message(CAN_HandleTypeDef *hcan, CANMessage *msg)
+void CANWrapper_Process_Ack(CANMessage *msg)
 {
-	if (msg->is_ack)
-	{
-		// Search the TxCache to verify that this ACK corresponds to
-		// something we sent. Delete the entry if it is.
-		int index = TxCache_Find(&s_tx_cache, msg);
-		TxCache_Erase(&s_tx_cache, index);
-	}
-	else
-	{
-		// Acknowledge the received message.
-		transmit_internal(hcan, msg->sender, msg->cmd, msg->body, true);
-	}
+	// Search the TxCache to verify that this ACK corresponds to
+	// something we sent. Delete the entry if it is.
+	int index = TxCache_Find(&s_tx_cache, msg);
+	TxCache_Erase(&s_tx_cache, index);
+}
+
+void CANWrapper_Transmit_Ack(CAN_HandleTypeDef *hcan, CANMessage *msg)
+{
+	transmit_internal(hcan, msg->sender, msg->cmd, msg->body, true);
 }
 
 void HAL_CAN_ErrorCallback(CAN_HandleTypeDef *hcan)

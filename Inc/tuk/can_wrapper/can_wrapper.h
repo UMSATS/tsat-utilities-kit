@@ -8,6 +8,8 @@
 #ifndef CAN_WRAPPER_MODULE_INC_CAN_WRAPPER_H_
 #define CAN_WRAPPER_MODULE_INC_CAN_WRAPPER_H_
 
+#include "hal_include.h"
+
 #include "can_command_list.h"
 #include "can_message.h"
 #include "can_queue.h"
@@ -18,10 +20,6 @@
 #include "tuk/error_list.h"
 
 #include <stdbool.h>
-#include <stm32l4xx.h>
-#include <stm32l4xx_hal_def.h>
-#include <stm32l4xx_hal_can.h>
-#include <stm32l4xx_hal_tim.h>
 #include <stdint.h>
 #include <stddef.h>
 
@@ -78,5 +76,20 @@ ErrorCode CANWrapper_Poll_Errors();
  * @param body         The bytes to transmit.
  */
 ErrorCode CANWrapper_Transmit(CAN_HandleTypeDef *hcan, NodeID recipient, CmdID cmd_id, const uint8_t *body);
+
+/**
+ * @brief              Removes an acknowledged message from the timeout detection queue.
+ *
+ * @param msg          The ack message.
+ */
+void CANWrapper_Process_Ack(CANMessage *msg);
+
+/**
+ * @brief              Sends an acknowledgement over CAN.
+ *
+ * @param hcan         Handle of the CAN peripheral.
+ * @param msg          The message to acknowledge.
+ */
+void CANWrapper_Transmit_Ack(CAN_HandleTypeDef *hcan, CANMessage *msg);
 
 #endif /* CAN_WRAPPER_MODULE_INC_CAN_WRAPPER_H_ */
