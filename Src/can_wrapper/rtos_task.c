@@ -1,12 +1,12 @@
 /** (c) 2024 UMSATS
- * @file msg_task.c
+ * @file rtos_task.c
  *
- * RTOS task which delivers incoming messages to the message callback.
+ * RTOS task which invokes the command handler for each incoming command.
  */
 
 #ifdef CWM_DEFINE_RTOS_TASK
 
-#include "tuk/can_wrapper/msg_task.h"
+#include "tuk/can_wrapper/rtos_task.h"
 #include "tuk/can_wrapper/can_message.h"
 #include "tuk/error_list.h"
 
@@ -18,13 +18,13 @@ static osMessageQueueId_t s_msg_queue;
 // Callback
 static CANCommandHandlerCallback s_handler_callback;
 
-void CANWrapper_Init_Message_Task(osMessageQueueId_t msg_queue, CANCommandHandlerCallback handler_callback)
+void CANWrapper_Init_RTOS_Task(osMessageQueueId_t msg_queue, CANCommandHandlerCallback handler_callback)
 {
 	s_msg_queue = msg_queue;
 	s_handler_callback = handler_callback;
 }
 
-void CANWrapper_Start_Message_Task()
+void CANWrapper_Start_RTOS_Task()
 {
 	CANMessage msg;
 
@@ -34,8 +34,17 @@ void CANWrapper_Start_Message_Task()
 		// Wait for the next message to arrive.
 		osMessageQueueGet(s_msg_queue, &msg, NULL, osWaitForever);
 
-		// Pass it to the user callback.
-		s_handler_callback(msg);
+		if (msg->is_ack)
+		{
+			CANWrapper_Process_Ack(&msg);
+		}
+		else
+		{
+			CANWrapper_Transmit_Ack(&msg);
+
+			// Pass it to the user callback.
+			s_handler_callback(msg);
+		}
 	}
 	osThreadExit();
 }

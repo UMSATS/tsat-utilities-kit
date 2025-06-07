@@ -95,6 +95,30 @@ ErrorCode CANWrapper_Set_Node_ID(NodeID id)
 	return ERR_OK;
 }
 
+ErrorCode CANWrapper_Poll_CAN_Queue(CANQueue *can_queue, CANCommandHandlerCallback callback)
+{
+	CANMessage msg;
+
+	// Dequeue messages one at a time.
+	while (CANQueue_Dequeue(&can_queue, &msg) == ERR_OK)
+	{
+		if (msg->is_ack)
+		{
+			CANWrapper_Process_Ack(&msg);
+		}
+		else
+		{
+			// Acknowledge.
+			CANWrapper_Transmit_Ack(&msg);
+
+			// Pass it to the user callback.
+			callback(msg);
+		}
+	}
+
+	return ERR_OK;
+}
+
 ErrorCode CANWrapper_Poll_Errors()
 {
 	if (!s_init) return ERR_CWM_NOT_INITIALISED;
