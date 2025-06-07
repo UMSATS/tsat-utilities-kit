@@ -24,6 +24,7 @@
 #include <stddef.h>
 
 typedef void (*CANMessageCallback)(CAN_HandleTypeDef*, CANMessage);
+typedef void (*CANCommandHandlerCallback)(CANMessage);
 typedef void (*CANErrorCallback)(CANWrapper_ErrorInfo);
 
 typedef struct
@@ -44,6 +45,7 @@ ErrorCode CANWrapper_Init(const CANWrapper_InitTypeDef *init_struct);
 
 /**
  * @brief              Initializes and starts a CAN peripheral.
+ * @warning            This function should not be called from an ISR.
  *
  * @param hcan         Handle of the peripheral.
  */
@@ -57,7 +59,18 @@ ErrorCode CANWrapper_CAN_Start(CAN_HandleTypeDef *hcan);
 ErrorCode CANWrapper_Set_Node_ID(NodeID id);
 
 /**
- * @brief              Polls for new errors.
+ * @brief              Polls a CAN queue for messages, processing ACK's and
+ *                     invoking the callback for each non-ACK message.
+ * @warning            This function should not be called from an ISR.
+ *
+ * @param can_queue    The queue to poll messages from.
+ * @param callback     Callback for your command handler function.
+ * @return
+ */
+ErrorCode CANWrapper_Poll_CAN_Queue(CANQueue *can_queue, CANCommandHandlerCallback callback);
+
+/**
+ * @brief              Polls errors from the CAN controller.
  * @warning            This function should not be called from an ISR.
  *
  * This is the point where error_callback will be called.
@@ -66,9 +79,9 @@ ErrorCode CANWrapper_Poll_Errors();
 
 /**
  * @brief              Sends a message over CAN.
- * @note               Avoid calling this function from an ISR, unless you are
- *                     taking precautions to handle any potential errors that
- *                     may arise as a result.
+ * @note               This function may fail if called from an ISR. Therefore,
+ *                     avoid doing so unless you have considered recovery in the
+ *                     case of an error.
  *
  * @param hcan         Handle of the CAN peripheral.
  * @param recipient    ID of the intended recipient.
@@ -78,18 +91,20 @@ ErrorCode CANWrapper_Poll_Errors();
 ErrorCode CANWrapper_Transmit(CAN_HandleTypeDef *hcan, NodeID recipient, CmdID cmd_id, const uint8_t *body);
 
 /**
- * @brief              Removes an acknowledged message from the timeout detection queue.
- *
- * @param msg          The ack message.
- */
-void CANWrapper_Process_Ack(CANMessage *msg);
-
-/**
  * @brief              Sends an acknowledgement over CAN.
+ * @warning            This function should not be called from an ISR.
  *
  * @param hcan         Handle of the CAN peripheral.
  * @param msg          The message to acknowledge.
  */
-void CANWrapper_Transmit_Ack(CAN_HandleTypeDef *hcan, CANMessage *msg);
+ErrorCode CANWrapper_Transmit_Ack(CAN_HandleTypeDef *hcan, const CANMessage *msg);
+
+/**
+ * @brief              Removes an acknowledged message from the timeout detection queue.
+ * @warning            This function should not be called from an ISR.
+ *
+ * @param msg          The ack message.
+ */
+ErrorCode CANWrapper_Process_Ack(const CANMessage *msg);
 
 #endif /* CAN_WRAPPER_MODULE_INC_CAN_WRAPPER_H_ */

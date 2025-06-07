@@ -1,14 +1,13 @@
 /** (c) 2024 UMSATS
  * @file can_wrapper.c
  *
- * CAN wrapper for simplified message receipt & transmission.
+ * CAN wrapper for simplified CAN transmission & reception.
  */
 
 #include "tuk/can_wrapper/can_wrapper.h"
 #include "tuk/can_wrapper/can_queue.h"
 #include "tuk/can_wrapper/error_queue.h"
 #include "tuk/can_wrapper/tx_cache.h"
-#include "tuk/can_wrapper/cwm_mode.h"
 #include "tuk/debug.h"
 #include "tuk/utils.h"
 
@@ -23,7 +22,7 @@
 
 #define PERIOD_TICKS 5000
 
-static const CAN_FilterTypeDef filter_config = {
+static const CAN_FilterTypeDef FILTER_CONFIG = { // TODO: Look into how this works
 		.FilterIdHigh         = 0x0000,
 		.FilterIdLow          = 0x0000,
 		.FilterMaskIdHigh     = 0x0000,
@@ -67,7 +66,7 @@ ErrorCode CANWrapper_Init(const CANWrapper_InitTypeDef *init_struct)
 
 ErrorCode CANWrapper_CAN_Start(CAN_HandleTypeDef *hcan)
 {
-	if (HAL_CAN_ConfigFilter(hcan, &filter_config) != HAL_OK)
+	if (HAL_CAN_ConfigFilter(hcan, &FILTER_CONFIG) != HAL_OK)
 	{
 		return ERR_CWM_FAILED_TO_CONFIG_FILTER;
 	}
@@ -98,6 +97,8 @@ ErrorCode CANWrapper_Set_Node_ID(NodeID id)
 
 ErrorCode CANWrapper_Poll_Errors()
 {
+	if (!s_init) return ERR_CWM_NOT_INITIALISED;
+
 	// Get timer values.
 	uint32_t counter_value = __HAL_TIM_GET_COUNTER(s_init_struct.htim);
 	uint32_t rcr_value = s_init_struct.htim->Instance->RCR;
@@ -146,9 +147,26 @@ ErrorCode CANWrapper_Poll_Errors()
 	return ERR_OK;
 }
 
+ErrorCode CANWrapper_Process_Ack(const CANMessage *msg)
+{
+	if (!s_init) return ERR_CWM_NOT_INITIALISED;
+
+	// Search the TxCache to verify that this ACK corresponds to
+	// something we sent. Delete the entry if it is.
+	int index = TxCache_Find(&s_tx_cache, msg);
+	TxCache_Erase(&s_tx_cache, index);
+
+	return ERR_OK;
+}
+
 ErrorCode CANWrapper_Transmit(CAN_HandleTypeDef *hcan, NodeID recipient, CmdID cmd_id, const uint8_t *body)
 {
 	return transmit_internal(hcan, recipient, cmd_id, body, false);
+}
+
+ErrorCode CANWrapper_Transmit_Ack(CAN_HandleTypeDef *hcan, const CANMessage *msg)
+{
+	return transmit_internal(hcan, msg->sender, msg->cmd, msg->body, true);
 }
 
 ErrorCode transmit_internal(CAN_HandleTypeDef *hcan, NodeID recipient, CmdID cmd_id, const uint8_t *body, bool is_ack)
@@ -220,7 +238,6 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 {
 	HAL_StatusTypeDef status;
 
-	// Create an item to be placed into the queue.
 	CANMessage msg = {0};
 
 	// Retrieve the message header and body.
@@ -236,21 +253,15 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 	msg.recipient = (RECIPIENT_MASK & rx_header.StdId) >> 1;
 	msg.is_ack    = ACK_MASK & rx_header.StdId;
 
-	// Pass the message to the user callback.
+#ifdef CWM_DISABLE_FILTERING
 	s_init_struct.message_callback(hcan, msg);
-}
-
-void CANWrapper_Process_Ack(CANMessage *msg)
-{
-	// Search the TxCache to verify that this ACK corresponds to
-	// something we sent. Delete the entry if it is.
-	int index = TxCache_Find(&s_tx_cache, msg);
-	TxCache_Erase(&s_tx_cache, index);
-}
-
-void CANWrapper_Transmit_Ack(CAN_HandleTypeDef *hcan, CANMessage *msg)
-{
-	transmit_internal(hcan, msg->sender, msg->cmd, msg->body, true);
+#else
+	// Check if the message is for us.
+	if (msg.recipient == s_init_struct.node_id && msg.sender != s_init_struct.node_id)
+	{
+		s_init_struct.message_callback(hcan, msg);
+	}
+#endif
 }
 
 void HAL_CAN_ErrorCallback(CAN_HandleTypeDef *hcan)
@@ -263,12 +274,12 @@ void HAL_CAN_ErrorCallback(CAN_HandleTypeDef *hcan)
 
 	if (HAL_CAN_GetError(hcan) & HAL_CAN_ERROR_EWG)
 	{
-		// error warning. (96 errors recorded from transmission or receipt)
+		// error warning. (96 errors recorded from transmission or reception)
 	}
 
 	if (HAL_CAN_GetError(hcan) & HAL_CAN_ERROR_EPV)
 	{
-		// entered error passive state. (more than 16 failed transmission attempts and/or 128 failed receipts)
+		// entered error passive state. (more than 16 failed transmission attempts and/or 128 failed receptions)
 	}
 
 	if (HAL_CAN_GetError(hcan) & HAL_CAN_ERROR_BOF)

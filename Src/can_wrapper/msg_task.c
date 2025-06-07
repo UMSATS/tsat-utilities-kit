@@ -4,9 +4,7 @@
  * RTOS task which delivers incoming messages to the message callback.
  */
 
-#include "tuk/can_wrapper/cwm_mode.h"
-
-#ifdef CWM_MODE_RTOS
+#ifdef CWM_DEFINE_RTOS_TASK
 
 #include "tuk/can_wrapper/msg_task.h"
 #include "tuk/can_wrapper/can_message.h"
@@ -17,12 +15,13 @@
 // Message queue
 static osMessageQueueId_t s_msg_queue;
 
-// Forward declaration. Defined in can_wrapper.c
-extern ErrorCode CANWrapper_Process_Message(CANMessage *msg);
+// Callback
+static CANCommandHandlerCallback s_handler_callback;
 
-void CANWrapper_Init_Message_Task(osMessageQueueId_t msg_queue)
+void CANWrapper_Init_Message_Task(osMessageQueueId_t msg_queue, CANCommandHandlerCallback handler_callback)
 {
 	s_msg_queue = msg_queue;
+	s_handler_callback = handler_callback;
 }
 
 void CANWrapper_Start_Message_Task()
@@ -35,8 +34,8 @@ void CANWrapper_Start_Message_Task()
 		// Wait for the next message to arrive.
 		osMessageQueueGet(s_msg_queue, &msg, NULL, osWaitForever);
 
-		// Pass it to the user code.
-		CANWrapper_Process_Message(&msg);
+		// Pass it to the user callback.
+		s_handler_callback(msg);
 	}
 	osThreadExit();
 }

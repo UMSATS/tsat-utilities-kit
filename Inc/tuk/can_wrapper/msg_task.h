@@ -7,13 +7,19 @@
 #ifndef TSAT_UTILITIES_KIT_SRC_CAN_WRAPPER_MSG_TASK_H_
 #define TSAT_UTILITIES_KIT_SRC_CAN_WRAPPER_MSG_TASK_H_
 
-#include "tuk/can_wrapper/cwm_mode.h"
+#ifdef CWM_DEFINE_RTOS_TASK
 
-#ifdef CWM_MODE_RTOS
+#include "can_wrapper.h"
 
 #include "cmsis_os.h"
 
-void CANWrapper_Init_Message_Task(osMessageQueueId_t msg_queue);
+/**
+ * @brief Initialises the message RTOS task.
+ *
+ * @param msg_queue     An RTOS queue to store messages.
+ * @param callback      Callback for processing commands.
+ */
+void CANWrapper_Init_Message_Task(osMessageQueueId_t msg_queue, CANCommandHandlerCallback callback);
 
 void CANWrapper_Start_Message_Task();
 
