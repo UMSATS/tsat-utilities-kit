@@ -37,6 +37,19 @@ static const CAN_FilterTypeDef FILTER_CONFIG = { // TODO: Look into how this wor
 
 static CANWrapper_InitTypeDef s_init_struct = {0};
 
+// TODO: Figure out proper attributes for these tasks
+osThreadAttr_t commandHandler_attributes = {
+	.name = "commandHandler",
+	.stack_size = 128 * 4,
+	.priority = (osPriority_t) osPriorityNormal
+};
+
+osThreadAttr_t ack_attributes = {
+	.name = "ack",
+	.stack_size = 128 * 4,
+	.priority = (osPriority_t) osPriorityHigh
+};
+
 static TxCache s_tx_cache = {0};
 static ErrorQueue s_error_queue = {0};
 
@@ -98,6 +111,12 @@ ErrorCode CANWrapper_Set_Node_ID(NodeID id)
 	return ERR_OK;
 }
 
+osMessageQueueId_t CANWrapper_Create_Queue()
+{
+	uint32_t msg_count = 100; // TODO: Find a good value or just let subsystems choose
+	return osMessageQueueNew(msg_count, sizeof(CANQueueItem), NULL);
+}
+
 void CANWrapper_Start_Command_Handler_Task()
 {
 	CANQueueItem item;
@@ -110,7 +129,7 @@ void CANWrapper_Start_Command_Handler_Task()
 
 		if (item.msg.is_ack)
 		{
-			CANWrapper_Process_Ack(&msg);
+			CANWrapper_Process_Ack(&item.msg);
 		}
 
 		// Pass it to the user callback.
@@ -302,19 +321,19 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 	// Enqueue message for command handler task.
 #ifdef CWM_DISABLE_FILTERING
 	// Filtering disabled: Don't check anything.
-	osMessageQueuePut(&s_init_struct.msg_queue, &item);
+	osMessageQueuePut(&s_init_struct.msg_queue, &item, 0U, 0U);
 #else
 	// Filter out messages that aren't meant for us.
 	if (item.msg.recipient == s_init_struct.node_id && item.msg.sender != s_init_struct.node_id)
 	{
-		osMessageQueuePut(&s_init_struct.msg_queue, &item);
+		osMessageQueuePut(&s_init_struct.msg_queue, &item, 0U, 0U);
 	}
 #endif
 
 	// Enqueue message for acknowledgement task.
-	if (!msg.is_ack)
+	if (!item.msg.is_ack)
 	{
-		osMessageQueuePut(&s_ack_queue, &item);
+		osMessageQueuePut(&s_init_struct.ack_queue, &item, 0U, 0U);
 	}
 }
 

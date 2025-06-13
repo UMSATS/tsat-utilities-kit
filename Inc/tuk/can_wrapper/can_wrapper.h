@@ -19,6 +19,8 @@
 
 #include "tuk/error_list.h"
 
+#include "cmsis_os.h"
+
 #include <stdbool.h>
 #include <stdint.h>
 #include <stddef.h>
@@ -42,6 +44,9 @@ typedef struct
 	CANMessage msg;
 } CANQueueItem;
 
+extern osThreadAttr_t commandHandler_attributes;
+extern osThreadAttr_t ack_attributes;
+
 /**
  * @brief              Performs necessary setup for normal functioning.
  * @warning            This function should not be called from an ISR.
@@ -64,6 +69,12 @@ ErrorCode CANWrapper_CAN_Start(CAN_HandleTypeDef *hcan);
  * @param id           The new ID to be set.
  */
 ErrorCode CANWrapper_Set_Node_ID(NodeID id);
+
+/**
+ * @brief              Creates an RTOS queue for CANQueueItem.
+ * @warning            This function should not be called from an ISR.
+ */
+osMessageQueueId_t CANWrapper_Create_Queue();
 
 /**
  * @brief              Polls errors from the CAN controller.
