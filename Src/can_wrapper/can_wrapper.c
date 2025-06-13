@@ -47,8 +47,11 @@ static ErrorCode transmit_internal(CAN_HandleTypeDef *hcan, NodeID recipient, Cm
 ErrorCode CANWrapper_Init(const CANWrapper_InitTypeDef *init_struct)
 {
 	ASSERT_PARAM(init_struct->node_id <= NODE_ID_MAX, ERR_ARG_OUT_OF_RANGE);
-	ASSERT_PARAM(init_struct->message_callback != NULL, ERR_NULL_ARG);
 	ASSERT_PARAM(init_struct->htim != NULL, ERR_NULL_ARG);
+	ASSERT_PARAM(init_struct->msg_queue != NULL, ERR_NULL_ARG);
+	ASSERT_PARAM(init_struct->ack_queue != NULL, ERR_NULL_ARG);
+	ASSERT_PARAM(init_struct->message_callback != NULL, ERR_NULL_ARG);
+	ASSERT_PARAM(init_struct->error_callback != NULL, ERR_NULL_ARG);
 
 	s_init_struct = *init_struct;
 
@@ -95,28 +98,44 @@ ErrorCode CANWrapper_Set_Node_ID(NodeID id)
 	return ERR_OK;
 }
 
-ErrorCode CANWrapper_Poll_CAN_Queue(CANQueue *can_queue, CANCommandHandlerCallback callback)
+void CANWrapper_Start_Command_Handler_Task()
 {
-	CANMessage msg;
+	CANQueueItem item;
 
-	// Dequeue messages one at a time.
-	while (CANQueue_Dequeue(&can_queue, &msg) == ERR_OK)
+	// Infinite loop.
+	while (1)
 	{
-		if (msg->is_ack)
+		// Wait for the next message to arrive.
+		osMessageQueueGet(s_init_struct.msg_queue, &item, NULL, osWaitForever);
+
+		if (item.msg.is_ack)
 		{
 			CANWrapper_Process_Ack(&msg);
 		}
-		else
+
+		// Pass it to the user callback.
+#ifdef CWM_DISABLE_FILTERING
+		s_init_struct.message_callback(item.hcan, item.msg);
+#else
+		if (!item.msg.is_ack)
 		{
-			// Acknowledge.
-			CANWrapper_Transmit_Ack(&msg);
-
-			// Pass it to the user callback.
-			callback(msg);
+			s_init_struct.message_callback(item.hcan, item.msg);
 		}
+#endif
 	}
+	osThreadExit();
+}
 
-	return ERR_OK;
+void CANWrapper_Start_Acknowledgement_Task()
+{
+	CANQueueItem item;
+
+	while (1)
+	{
+		osMessageQueueGet(s_init_struct.ack_queue, &item, NULL, osWaitForever);
+
+		CANWrapper_Transmit_Ack(item.hcan, &item.msg);
+	}
 }
 
 ErrorCode CANWrapper_Poll_Errors()
@@ -262,30 +281,41 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 {
 	HAL_StatusTypeDef status;
 
-	CANMessage msg = {0};
+	CANQueueItem item = {
+			.hcan = hcan,
+			.msg = { 0 }
+	};
 
 	// Retrieve the message header and body.
 	CAN_RxHeaderTypeDef rx_header;
-	status = HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &rx_header, (uint8_t*)&msg.cmd);
+	status = HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &rx_header, (uint8_t*)&item.msg.cmd);
 
 	if (status != HAL_OK)
 		return; // in theory this should never happen. :p
 
 	// Extract all the metadata from the header.
-	msg.priority  = (PRIORITY_MASK & rx_header.StdId) >> 5;
-	msg.sender    = (SENDER_MASK & rx_header.StdId) >> 3;
-	msg.recipient = (RECIPIENT_MASK & rx_header.StdId) >> 1;
-	msg.is_ack    = ACK_MASK & rx_header.StdId;
+	item.msg.priority  = (PRIORITY_MASK & rx_header.StdId) >> 5;
+	item.msg.sender    = (SENDER_MASK & rx_header.StdId) >> 3;
+	item.msg.recipient = (RECIPIENT_MASK & rx_header.StdId) >> 1;
+	item.msg.is_ack    = ACK_MASK & rx_header.StdId;
 
+	// Enqueue message for command handler task.
 #ifdef CWM_DISABLE_FILTERING
-	s_init_struct.message_callback(hcan, msg);
+	// Filtering disabled: Don't check anything.
+	osMessageQueuePut(&s_init_struct.msg_queue, &item);
 #else
-	// Check if the message is for us.
-	if (msg.recipient == s_init_struct.node_id && msg.sender != s_init_struct.node_id)
+	// Filter out messages that aren't meant for us.
+	if (item.msg.recipient == s_init_struct.node_id && item.msg.sender != s_init_struct.node_id)
 	{
-		s_init_struct.message_callback(hcan, msg);
+		osMessageQueuePut(&s_init_struct.msg_queue, &item);
 	}
 #endif
+
+	// Enqueue message for acknowledgement task.
+	if (!msg.is_ack)
+	{
+		osMessageQueuePut(&s_ack_queue, &item);
+	}
 }
 
 void HAL_CAN_ErrorCallback(CAN_HandleTypeDef *hcan)
