@@ -117,7 +117,7 @@ osMessageQueueId_t CANWrapper_Create_Queue()
 	return osMessageQueueNew(msg_count, sizeof(CANQueueItem), NULL);
 }
 
-void CANWrapper_Start_Command_Handler_Task()
+void CANWrapper_Start_Command_Handler_Task(void *argument)
 {
 	CANQueueItem item;
 
@@ -145,7 +145,7 @@ void CANWrapper_Start_Command_Handler_Task()
 	osThreadExit();
 }
 
-void CANWrapper_Start_Acknowledgement_Task()
+void CANWrapper_Start_Acknowledgement_Task(void *argument)
 {
 	CANQueueItem item;
 

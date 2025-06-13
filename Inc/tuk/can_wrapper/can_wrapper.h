@@ -119,13 +119,13 @@ ErrorCode CANWrapper_Process_Ack(const CANMessage *msg);
 /**
  * @brief Task that invokes the message callback when a message arrives.
  */
-void CANWrapper_Start_Command_Handler_Task();
+void CANWrapper_Start_Command_Handler_Task(void *argument);
 
 /**
  * @brief Task that simply replies to incoming messages with ACK's.
  *
  * @note Assign a high priority to this task.
  */
-void CANWrapper_Start_Acknowledgement_Task();
+void CANWrapper_Start_Acknowledgement_Task(void *argument);
 
 #endif /* CAN_WRAPPER_MODULE_INC_CAN_WRAPPER_H_ */
