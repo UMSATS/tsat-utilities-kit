@@ -37,18 +37,11 @@ static const CAN_FilterTypeDef FILTER_CONFIG = { // TODO: Look into how this wor
 
 static CANWrapper_InitTypeDef s_init_struct = {0};
 
-// TODO: Figure out proper attributes for these tasks
-osThreadAttr_t commandHandler_attributes = {
-	.name = "commandHandler",
-	.stack_size = 128 * 4,
-	.priority = (osPriority_t) osPriorityNormal
-};
+osThreadId_t cmdHandlerTaskHandle;
+osThreadId_t ackTaskHandle;
 
-osThreadAttr_t ack_attributes = {
-	.name = "ack",
-	.stack_size = 128 * 4,
-	.priority = (osPriority_t) osPriorityHigh
-};
+static osMessageQueueId_t msg_queue;
+static osMessageQueueId_t ack_queue;
 
 static TxCache s_tx_cache = {0};
 static ErrorQueue s_error_queue = {0};
@@ -57,12 +50,12 @@ static bool s_init = false;
 
 static ErrorCode transmit_internal(CAN_HandleTypeDef *hcan, NodeID recipient, CmdID cmd_id, const uint8_t *body, bool is_ack);
 
+static void RTOS_Init();
+
 ErrorCode CANWrapper_Init(const CANWrapper_InitTypeDef *init_struct)
 {
 	ASSERT_PARAM(init_struct->node_id <= NODE_ID_MAX, ERR_ARG_OUT_OF_RANGE);
 	ASSERT_PARAM(init_struct->htim != NULL, ERR_NULL_ARG);
-	ASSERT_PARAM(init_struct->msg_queue != NULL, ERR_NULL_ARG);
-	ASSERT_PARAM(init_struct->ack_queue != NULL, ERR_NULL_ARG);
 	ASSERT_PARAM(init_struct->message_callback != NULL, ERR_NULL_ARG);
 	ASSERT_PARAM(init_struct->error_callback != NULL, ERR_NULL_ARG);
 
@@ -76,8 +69,34 @@ ErrorCode CANWrapper_Init(const CANWrapper_InitTypeDef *init_struct)
 	s_tx_cache = TxCache_Create();
 	s_error_queue = ErrorQueue_Create();
 
+	RTOS_Init();
+
 	s_init = true;
 	return ERR_OK;
+}
+
+void RTOS_Init()
+{
+	// TODO: Figure out proper message count (max queue length)
+	uint32_t msg_count = 100;
+	msg_queue = osMessageQueueNew(msg_count, sizeof(CANQueueItem), NULL);
+	ack_queue = osMessageQueueNew(msg_count, sizeof(CANQueueItem), NULL);
+
+	// TODO: Figure out proper attributes for these tasks
+	osThreadAttr_t commandHandler_attributes = {
+		.name = "commandHandler",
+		.stack_size = 128 * 4,
+		.priority = (osPriority_t) osPriorityNormal
+	};
+
+	osThreadAttr_t ack_attributes = {
+		.name = "ack",
+		.stack_size = 128 * 4,
+		.priority = (osPriority_t) osPriorityHigh
+	};
+
+	cmdHandlerTaskHandle = osThreadNew(CANWrapper_Start_Command_Handler_Task, NULL, &commandHandler_attributes);
+	ackTaskHandle = osThreadNew(CANWrapper_Start_Acknowledgement_Task, NULL, &ack_attributes);
 }
 
 ErrorCode CANWrapper_CAN_Start(CAN_HandleTypeDef *hcan)
@@ -125,7 +144,7 @@ void CANWrapper_Start_Command_Handler_Task(void *argument)
 	while (1)
 	{
 		// Wait for the next message to arrive.
-		osMessageQueueGet(s_init_struct.msg_queue, &item, NULL, osWaitForever);
+		osMessageQueueGet(msg_queue, &item, NULL, osWaitForever);
 
 		if (item.msg.is_ack)
 		{
@@ -151,7 +170,7 @@ void CANWrapper_Start_Acknowledgement_Task(void *argument)
 
 	while (1)
 	{
-		osMessageQueueGet(s_init_struct.ack_queue, &item, NULL, osWaitForever);
+		osMessageQueueGet(ack_queue, &item, NULL, osWaitForever);
 
 		CANWrapper_Transmit_Ack(item.hcan, &item.msg);
 	}
@@ -321,19 +340,19 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 	// Enqueue message for command handler task.
 #ifdef CWM_DISABLE_FILTERING
 	// Filtering disabled: Don't check anything.
-	osMessageQueuePut(&s_init_struct.msg_queue, &item, 0U, 0U);
+	osMessageQueuePut(&msg_queue, &item, 0U, 0U);
 #else
 	// Filter out messages that aren't meant for us.
 	if (item.msg.recipient == s_init_struct.node_id && item.msg.sender != s_init_struct.node_id)
 	{
-		osMessageQueuePut(&s_init_struct.msg_queue, &item, 0U, 0U);
+		osMessageQueuePut(&msg_queue, &item, 0U, 0U);
 	}
 #endif
 
 	// Enqueue message for acknowledgement task.
 	if (!item.msg.is_ack)
 	{
-		osMessageQueuePut(&s_init_struct.ack_queue, &item, 0U, 0U);
+		osMessageQueuePut(&ack_queue, &item, 0U, 0U);
 	}
 }
 

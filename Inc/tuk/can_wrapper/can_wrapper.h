@@ -32,8 +32,6 @@ typedef struct
 {
 	NodeID node_id;           // your subsystem's unique ID in the CAN network.
 	TIM_HandleTypeDef *htim;  // pointer to the timer handle.
-	osMessageQueueId_t msg_queue; // queue stores incoming messages.
-	osMessageQueueId_t ack_queue; // queue stores messages to be acknowledged.
 	CANMessageCallback message_callback; // called when a new message is received.
 	CANErrorCallback error_callback;     // called when an error occurs.
 } CANWrapper_InitTypeDef;
@@ -43,9 +41,6 @@ typedef struct
 	CAN_HandleTypeDef *hcan;
 	CANMessage msg;
 } CANQueueItem;
-
-extern osThreadAttr_t commandHandler_attributes;
-extern osThreadAttr_t ack_attributes;
 
 /**
  * @brief              Performs necessary setup for normal functioning.
