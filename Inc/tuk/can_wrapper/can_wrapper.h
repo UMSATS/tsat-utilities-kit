@@ -1,15 +1,14 @@
 /** (c) 2024 UMSATS
  * @file can_wrapper.h
  *
- * CAN wrapper for simplified initialisation, message reception, and message
- * transmission.
+ * CAN wrapper for simplified CAN transmission & reception.
  */
 
 #ifndef CAN_WRAPPER_MODULE_INC_CAN_WRAPPER_H_
 #define CAN_WRAPPER_MODULE_INC_CAN_WRAPPER_H_
 
+#include "cwm_api.h"
 #include "hal_include.h"
-
 #include "can_command_list.h"
 #include "can_message.h"
 #include "can_queue.h"
@@ -25,102 +24,100 @@
 #include <stdint.h>
 #include <stddef.h>
 
-typedef void (*CANMessageCallback)(CAN_HandleTypeDef*, CANMessage);
-typedef void (*CANErrorCallback)(CANWrapper_ErrorInfo);
+// Constants for RX callback.
+#define RX_ACK            0b001
+#define RX_HANDLE         0b010
+#define RX_CLEAR_TX_STORE 0b100
+
+#ifdef CWM_API_NORMAL
+typedef void (*CANMessageCallback)(const CANMessage*);
+
+#elif defined(CWM_API_ADVANCED)
+typedef void (*CANMessageCallback)(const CAN_HandleTypeDef*, const CANMessage*);
+typedef void (*CANRXCallback)(const CAN_HandleTypeDef*, const CANMessage*, uint8_t*);
+typedef void (*CANTXCallback)(const CAN_HandleTypeDef*, const CANMessage*);
+#endif
+
+typedef void (*CANErrorCallback)(const CANWrapper_ErrorInfo*);
 
 typedef struct
 {
-	NodeID node_id;           // your subsystem's unique ID in the CAN network.
-	TIM_HandleTypeDef *htim;  // pointer to the timer handle.
-	CANMessageCallback message_callback; // called when a new message is received.
-	CANErrorCallback error_callback;     // called when an error occurs.
+#ifdef CWM_API_NORMAL
+	NodeID node_id;          // Your subsystem's unique ID in the network.
+	CAN_HandleTypeDef *hcan; // The designated CAN peripheral.
+#endif
+
+	TIM_HandleTypeDef *htim;         // The designated timer peripheral.
+	CANMessageCallback message_callback; // Called when a message is ready to be handled.
+	CANErrorCallback error_callback; // Called on internal error.
+
+#ifdef CWM_API_ADVANCED
+	CANRXCallback rx_callback; // Called when a message is immediately received.
+	CANTXCallback tx_callback; // Called on message transmission.
+#endif
 } CANWrapper_InitTypeDef;
 
-typedef struct
-{
-	CAN_HandleTypeDef *hcan;
-	CANMessage msg;
-} CANQueueItem;
-
 /**
- * @brief              Performs necessary setup for normal functioning.
- * @warning            This function should not be called from an ISR.
+ * Performs necessary setup for normal functioning.
  *
- * @param init_struct  Configuration for initialisation.
+ * Initialises the module by configuring the designated peripherals and creating
+ * private RTOS objects. Call this function in an appropriate place between
+ * `osKernelInitialize()` and `osKernelStart()`.
+ *
+ * @warning This function should not be called from an ISR.
+ *
+ * @param init_struct Configuration for initialisation.
+ * @return Error code or ERR_OK on success.
  */
 ErrorCode CANWrapper_Init(const CANWrapper_InitTypeDef *init_struct);
 
+#ifdef CWM_API_NORMAL
 /**
- * @brief              Initializes and starts a CAN peripheral.
- * @warning            This function should not be called from an ISR.
+ * Sends a message using the TSAT protocol.
  *
- * @param hcan         Handle of the peripheral.
+ * Loads a message into one of the three TX mailboxes. In most cases, this
+ * function is non-blocking. However, if the mailboxes are full, this function
+ * will block for a short time until either space is made or a timeout occurs,
+ * in which case an appropriate error is returned.
+ *
+ * See the TSAT command reference for details about commands & structure.
+ *
+ * @warning This function can fail if called from an ISR. Avoid doing so unless
+ *     you have error handling in place with a recovery strategy.
+ *
+ * @param target The ID of the receiving node.
+ * @param cmd    The command being sent. This dictates the contents of `body`.
+ * @param body   The bytes comprising the message body.
+ * @return Error code or ERR_OK on success.
+ */
+ErrorCode CANWrapper_Transmit(NodeID target, CmdID cmd, const uint8_t *body);
+
+#elif defined(CWM_API_ADVANCED)
+/**
+ * Configures and starts a CAN peripheral for operation with the module.
+ *
+ * @warning This function should not be called from an ISR.
+ *
+ * @param hcan The CAN peripheral.
+ * @return Error code or ERR_OK on success.
  */
 ErrorCode CANWrapper_CAN_Start(CAN_HandleTypeDef *hcan);
 
 /**
- * @brief              Sets the user's node ID (for advanced usage only).
+ * Sends a raw CAN message formatted in accordance with the TSAT protocol.
  *
- * @param id           The new ID to be set.
- */
-ErrorCode CANWrapper_Set_Node_ID(NodeID id);
-
-/**
- * @brief              Creates an RTOS queue for CANQueueItem.
- * @warning            This function should not be called from an ISR.
- */
-osMessageQueueId_t CANWrapper_Create_Queue();
-
-/**
- * @brief              Polls errors from the CAN controller.
- * @warning            This function should not be called from an ISR.
+ * Similar to `CANWrapper_Transmit` but permits any message, irrespective of
+ * validity or context.
  *
- * This is the point where error_callback will be called.
- */
-ErrorCode CANWrapper_Poll_Errors();
-
-/**
- * @brief              Sends a message over CAN.
- * @note               This function may fail if called from an ISR. Therefore,
- *                     avoid doing so unless you have considered how to recover
- *                     in case of an error.
+ * @warning This function can fail if called from an ISR. Avoid doing so unless
+ *     you have error handling in place with a recovery strategy.
  *
- * @param hcan         Handle of the CAN peripheral.
- * @param recipient    ID of the intended recipient.
- * @param cmd_id       Command being sent. This determines what goes in `body`.
- * @param body         The bytes to transmit.
+ * @param hcan           The CAN peripheral.
+ * @param msg            The message to send.
+ * @param strict_timeout Whether to expect an ACK within the timeout.
+ * @return Error code or ERR_OK on success.
  */
-ErrorCode CANWrapper_Transmit(CAN_HandleTypeDef *hcan, NodeID recipient, CmdID cmd_id, const uint8_t *body);
-
-/**
- * @brief              Sends an acknowledgement over CAN.
- * @note               This function may fail if called from an ISR. Therefore,
- *                     avoid doing so unless you have considered how to recover
- *                     in case of an error.
- *
- * @param hcan         Handle of the CAN peripheral.
- * @param msg          The message to acknowledge.
- */
-ErrorCode CANWrapper_Transmit_Ack(CAN_HandleTypeDef *hcan, const CANMessage *msg);
-
-/**
- * @brief              Removes an acknowledged message from the timeout detection queue.
- * @warning            This function should not be called from an ISR.
- *
- * @param msg          The ack message.
- */
-ErrorCode CANWrapper_Process_Ack(const CANMessage *msg);
-
-/**
- * @brief Task that invokes the message callback when a message arrives.
- */
-void CANWrapper_Start_Command_Handler_Task(void *argument);
-
-/**
- * @brief Task that simply replies to incoming messages with ACK's.
- *
- * @note Assign a high priority to this task.
- */
-void CANWrapper_Start_Acknowledgement_Task(void *argument);
+ErrorCode CANWrapper_Transmit_Raw(const CAN_HandleTypeDef *hcan, const CANMessage *msg, bool strict_timeout);
+#endif
 
 #endif /* CAN_WRAPPER_MODULE_INC_CAN_WRAPPER_H_ */

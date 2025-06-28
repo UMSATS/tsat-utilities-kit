@@ -98,7 +98,8 @@ static bool is_matching_ack(const CANMessage *msg, const CANMessage *ack)
 	return !msg->is_ack
 		&& ack->is_ack
 		&& msg->cmd == ack->cmd
-		&& memcmp(msg->body, ack->body, cmd_configs[msg->cmd].body_size) == 0
+		&& msg->body_size == ack->body_size
+		&& memcmp(msg->body, ack->body, msg->body_size) == 0
 		&& msg->priority == ack->priority
 		&& msg->sender == ack->recipient
 		&& msg->recipient == ack->sender;
