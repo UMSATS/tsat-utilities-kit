@@ -200,20 +200,17 @@ ErrorCode CANWrapper_Transmit_Raw(const CAN_HandleTypeDef *hcan, const CANMessag
 	/* Update the TX cache */
 	if (status == HAL_OK && !msg->is_ack && strict_timeout)
 	{
-		// Get timer variables
-		uint32_t counter_value = __HAL_TIM_GET_COUNTER(s_init_struct.htim);
-		uint32_t rcr_value = s_init_struct.htim->Instance->RCR;
+		uint32_t timestamp = osKernelGetTickCount();
 
 		TxCacheItem tx_cache_item = {
-				.timestamp = {
-						.counter_value = counter_value,
-						.rcr_value = rcr_value
-				},
+				.timestamp = timestamp,
 				.msg = { 0 }
 		};
 		memcpy(&tx_cache_item.msg, msg, sizeof(CANMessage));
 
 		TxCache_Push_Back(&s_tx_cache, &tx_cache_item);
+
+		osThreadFlagsSet(s_error_handler_task, 0x1U);
 	}
 
 #ifdef CWM_API_ADVANCED
@@ -281,51 +278,31 @@ void Error_Handler_Thread(void *argument)
 	// Infinite loop
 	while (1)
 	{
-		Poll_Timeouts();
-
-		// Wait for the next item in the queue.
-		if (osMessageQueueGet(s_error_queue, &item, NULL, osWaitForever) == osOK)
+		// Wait for a message in the Tx cache.
+		if (s_tx_cache.size == 0)
 		{
-			// Let the user handle it.
-			s_init_struct.error_callback(&item);
+			osThreadFlagsWait(0U, osFlagsWaitAny, osWaitForever);
 		}
-	}
-}
 
-void Poll_Timeouts()
-{
-	// Get timer values
-	uint32_t counter_value = __HAL_TIM_GET_COUNTER(s_init_struct.htim);
-	uint32_t rcr_value = s_init_struct.htim->Instance->RCR;
-	uint64_t current_tick = counter_value + rcr_value*PERIOD_TICKS;
+		// Calculate timeout tick
+		// (assuming TIMEOUT is in milliseconds and RTOS ticks are 1 KHz)
+		const uint32_t timestamp = s_tx_cache.items[0].timestamp;
+		const uint32_t timeout_tick = tx_tick + TIMEOUT;
 
-	// Poll timeout events
-	while (s_tx_cache.size > 0)
-	{
-		const TxCacheItem *front_item = &s_tx_cache.items[0];
+		// Wait for the message to time out.
+		osDelayUntil(timeout_tick);
 
-		// Calculate the times of important events.
-		uint64_t transmission_tick = front_item->timestamp.counter_value + front_item->timestamp.rcr_value*PERIOD_TICKS;
-		uint64_t timeout_tick = (transmission_tick + TIMEOUT) % (16*PERIOD_TICKS);
-
-		bool clock_overflowed = transmission_tick >= timeout_tick;
-		bool timeout_occurred = clock_overflowed ?
-				 ( current_tick >= timeout_tick && current_tick < transmission_tick )
-			   : ( current_tick >= timeout_tick || current_tick < transmission_tick );
-
-		if (timeout_occurred)
+		// Trigger user callback if the same message is still in the cache
+		// (comparing timestamps to reduce read instructions).
+		if (timestamp == s_tx_cache.items[0].timestamp)
 		{
-			// Enqueue timeout error
 			CANWrapper_ErrorInfo error;
 			error.error = CAN_WRAPPER_ERROR_TIMEOUT;
-			error.msg = front_item->msg;
-			osMessageQueuePut(&s_error_queue, &error, 0U, 0U);
+			error.msg = s_tx_cache.items[0].msg;
 
 			TxCache_Erase(&s_tx_cache, 0);
-		}
-		else
-		{
-			break;
+
+			s_init_struct.error_callback(&error);
 		}
 	}
 }

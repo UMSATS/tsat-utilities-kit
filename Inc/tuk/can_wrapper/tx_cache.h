@@ -18,11 +18,7 @@
 
 typedef struct
 {
-	struct
-	{
-		uint32_t counter_value;
-		uint32_t rcr_value;
-	} timestamp;
+	uint32_t timestamp;
 	CANMessage msg;
 } TxCacheItem;
 
