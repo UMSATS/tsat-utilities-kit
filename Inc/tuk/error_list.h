@@ -27,7 +27,6 @@ typedef enum {
 	ERR_CWM_FAILED_TO_CONFIG_FILTER,    // Failed to config CAN filter.
 	ERR_CWM_FAILED_TO_START_CAN,
 	ERR_CWM_FAILED_TO_ENABLE_INTERRUPT, // Couldn't enable CAN interrupt.
-	ERR_CWM_FAILED_TO_START_TIMER,
 	ERR_CWM_TX_FAIL_BAD_CAN_STATE,      // The CAN controller is unavailable.
 	ERR_CWM_TX_MAILBOXES_FULL,
 

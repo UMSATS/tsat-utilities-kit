@@ -75,7 +75,6 @@ ErrorCode CANWrapper_Init(const CANWrapper_InitTypeDef *init_struct)
 #ifdef CWM_API_NORMAL
 	ASSERT_PARAM(init_struct->node_id <= NODE_ID_MAX, ERR_ARG_OUT_OF_RANGE);
 #endif
-	ASSERT_PARAM(init_struct->htim != NULL, ERR_NULL_ARG);
 	ASSERT_PARAM(init_struct->message_callback != NULL, ERR_NULL_ARG);
 	ASSERT_PARAM(init_struct->error_callback != NULL, ERR_NULL_ARG);
 #ifdef CWM_API_ADVANCED
@@ -84,11 +83,6 @@ ErrorCode CANWrapper_Init(const CANWrapper_InitTypeDef *init_struct)
 #endif
 
 	s_init_struct = *init_struct;
-
-	if (HAL_TIM_Base_Start(s_init_struct.htim) != HAL_OK)
-	{
-		return ERR_CWM_FAILED_TO_START_TIMER;
-	}
 
 	s_tx_cache = TxCache_Create();
 

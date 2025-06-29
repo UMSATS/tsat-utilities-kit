@@ -41,10 +41,9 @@ typedef void (*CANErrorCallback)(const CANWrapper_ErrorInfo*);
 typedef struct
 {
 #ifdef CWM_API_NORMAL
-	NodeID node_id;          // Your subsystem's unique ID in the network.
+	NodeID node_id; // Your subsystem's unique ID in the network.
 #endif
 
-	TIM_HandleTypeDef *htim;         // The designated timer peripheral.
 	CANMessageCallback message_callback; // Called when a message is ready to be handled.
 	CANErrorCallback error_callback; // Called on internal error.
 
