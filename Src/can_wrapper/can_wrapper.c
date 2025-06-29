@@ -70,26 +70,6 @@ static void Message_Handler_Thread(void *argument);
 static void Acknowledgement_Thread(void *argument);
 static void Error_Handler_Thread(void *argument);
 
-ErrorCode CANWrapper_CAN_Start(CAN_HandleTypeDef *hcan)
-{
-	if (HAL_CAN_ConfigFilter(hcan, &FILTER_CONFIG) != HAL_OK)
-	{
-		return ERR_CWM_FAILED_TO_CONFIG_FILTER;
-	}
-
-	if (HAL_CAN_Start(hcan) != HAL_OK)
-	{
-		return ERR_CWM_FAILED_TO_START_CAN;
-	}
-
-	if (HAL_CAN_ActivateNotification(hcan, CAN_IT_RX_FIFO0_MSG_PENDING) != HAL_OK)
-	{
-		return ERR_CWM_FAILED_TO_ENABLE_INTERRUPT;
-	}
-
-	return ERR_OK;
-}
-
 ErrorCode CANWrapper_Init(const CANWrapper_InitTypeDef *init_struct)
 {
 #ifdef CWM_API_NORMAL
@@ -151,7 +131,27 @@ void RTOS_Init()
 	s_msg_handler_task = osThreadNew(Error_Handler_Thread, NULL, &error_handler_attr);
 }
 
-ErrorCode CANWrapper_Transmit_Raw(const CAN_HandleTypeDef *hcan, const CANMessage *msg, bool strict_timeout)
+ErrorCode CANWrapper_CAN_Start(CAN_HandleTypeDef *hcan)
+{
+	if (HAL_CAN_ConfigFilter(hcan, &FILTER_CONFIG) != HAL_OK)
+	{
+		return ERR_CWM_FAILED_TO_CONFIG_FILTER;
+	}
+
+	if (HAL_CAN_Start(hcan) != HAL_OK)
+	{
+		return ERR_CWM_FAILED_TO_START_CAN;
+	}
+
+	if (HAL_CAN_ActivateNotification(hcan, CAN_IT_RX_FIFO0_MSG_PENDING) != HAL_OK)
+	{
+		return ERR_CWM_FAILED_TO_ENABLE_INTERRUPT;
+	}
+
+	return ERR_OK;
+}
+
+ErrorCode CANWrapper_Transmit_Raw(CAN_HandleTypeDef *hcan, const CANMessage *msg, bool strict_timeout)
 {
 	if (!s_init) return ERR_CWM_NOT_INITIALISED;
 

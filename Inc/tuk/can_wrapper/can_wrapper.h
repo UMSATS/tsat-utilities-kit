@@ -68,6 +68,16 @@ typedef struct
  */
 ErrorCode CANWrapper_Init(const CANWrapper_InitTypeDef *init_struct);
 
+/**
+ * Configures and starts a CAN peripheral for operation with the module.
+ *
+ * @warning This function should not be called from an ISR.
+ *
+ * @param hcan The CAN peripheral.
+ * @return Error code or ERR_OK on success.
+ */
+ErrorCode CANWrapper_CAN_Start(CAN_HandleTypeDef *hcan);
+
 #ifdef CWM_API_NORMAL
 /**
  * Sends a message using the TSAT protocol.
@@ -91,16 +101,6 @@ ErrorCode CANWrapper_Transmit(CAN_HandleTypeDef *hcan, NodeID target, CmdID cmd,
 
 #elif defined(CWM_API_ADVANCED)
 /**
- * Configures and starts a CAN peripheral for operation with the module.
- *
- * @warning This function should not be called from an ISR.
- *
- * @param hcan The CAN peripheral.
- * @return Error code or ERR_OK on success.
- */
-ErrorCode CANWrapper_CAN_Start(CAN_HandleTypeDef *hcan);
-
-/**
  * Sends a raw CAN message formatted in accordance with the TSAT protocol.
  *
  * Similar to `CANWrapper_Transmit` but permits any message, irrespective of
@@ -114,7 +114,7 @@ ErrorCode CANWrapper_CAN_Start(CAN_HandleTypeDef *hcan);
  * @param strict_timeout Whether to expect an ACK within the timeout.
  * @return Error code or ERR_OK on success.
  */
-ErrorCode CANWrapper_Transmit_Raw(const CAN_HandleTypeDef *hcan, const CANMessage *msg, bool strict_timeout);
+ErrorCode CANWrapper_Transmit_Raw(CAN_HandleTypeDef *hcan, const CANMessage *msg, bool strict_timeout);
 #endif
 
 #endif /* CAN_WRAPPER_MODULE_INC_CAN_WRAPPER_H_ */
