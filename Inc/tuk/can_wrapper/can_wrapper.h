@@ -29,11 +29,9 @@
 #define RX_HANDLE         0b010
 #define RX_CLEAR_TX_STORE 0b100
 
-#ifdef CWM_API_NORMAL
-typedef void (*CANMessageCallback)(const CANMessage*);
-
-#elif defined(CWM_API_ADVANCED)
 typedef void (*CANMessageCallback)(const CAN_HandleTypeDef*, const CANMessage*);
+
+#ifdef CWM_API_ADVANCED
 typedef void (*CANRXCallback)(const CAN_HandleTypeDef*, const CANMessage*, uint8_t*);
 typedef void (*CANTXCallback)(const CAN_HandleTypeDef*, const CANMessage*);
 #endif
@@ -44,7 +42,6 @@ typedef struct
 {
 #ifdef CWM_API_NORMAL
 	NodeID node_id;          // Your subsystem's unique ID in the network.
-	CAN_HandleTypeDef *hcan; // The designated CAN peripheral.
 #endif
 
 	TIM_HandleTypeDef *htim;         // The designated timer peripheral.
@@ -90,7 +87,7 @@ ErrorCode CANWrapper_Init(const CANWrapper_InitTypeDef *init_struct);
  * @param body   The bytes comprising the message body.
  * @return Error code or ERR_OK on success.
  */
-ErrorCode CANWrapper_Transmit(NodeID target, CmdID cmd, const uint8_t *body);
+ErrorCode CANWrapper_Transmit(CAN_HandleTypeDef *hcan, NodeID target, CmdID cmd, const uint8_t *body);
 
 #elif defined(CWM_API_ADVANCED)
 /**

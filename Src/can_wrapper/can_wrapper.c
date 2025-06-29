@@ -66,7 +66,6 @@ static osMessageQueueId_t s_error_queue;
 /// Static Functions
 ////////////////////////////////////////
 static void RTOS_Init();
-static void Poll_Timeouts();
 static void Message_Handler_Thread(void *argument);
 static void Acknowledgement_Thread(void *argument);
 static void Error_Handler_Thread(void *argument);
@@ -95,7 +94,6 @@ ErrorCode CANWrapper_Init(const CANWrapper_InitTypeDef *init_struct)
 {
 #ifdef CWM_API_NORMAL
 	ASSERT_PARAM(init_struct->node_id <= NODE_ID_MAX, ERR_ARG_OUT_OF_RANGE);
-	ASSERT_PARAM(init_struct->hcan != NULL, ERR_NULL_ARG);
 #endif
 	ASSERT_PARAM(init_struct->htim != NULL, ERR_NULL_ARG);
 	ASSERT_PARAM(init_struct->message_callback != NULL, ERR_NULL_ARG);
@@ -115,14 +113,6 @@ ErrorCode CANWrapper_Init(const CANWrapper_InitTypeDef *init_struct)
 	s_tx_cache = TxCache_Create();
 
 	RTOS_Init();
-
-#ifdef CWM_API_NORMAL
-	ErrorCode error = CANWrapper_CAN_Start(s_init_struct.hcan);
-	if (error != ERR_OK)
-	{
-		return error;
-	}
-#endif
 
 	s_init = true;
 	return ERR_OK;
@@ -221,7 +211,7 @@ ErrorCode CANWrapper_Transmit_Raw(const CAN_HandleTypeDef *hcan, const CANMessag
 	return status;
 }
 
-ErrorCode CANWrapper_Transmit(NodeID recipient, CmdID cmd, const uint8_t *body)
+ErrorCode CANWrapper_Transmit(CAN_HandleTypeDef *hcan, NodeID recipient, CmdID cmd, const uint8_t *body)
 {
 	CANMessage msg = {
 			.cmd = cmd,
@@ -234,7 +224,7 @@ ErrorCode CANWrapper_Transmit(NodeID recipient, CmdID cmd, const uint8_t *body)
 	};
 	memcpy(msg.body, body, msg.body_size);
 
-	return CANWrapper_Transmit_Raw(s_init_struct.hcan, &msg, true);
+	return CANWrapper_Transmit_Raw(hcan, &msg, true);
 }
 
 ////////////////////////////////////////
@@ -287,7 +277,7 @@ void Error_Handler_Thread(void *argument)
 		// Calculate timeout tick
 		// (assuming TIMEOUT is in milliseconds and RTOS ticks are 1 KHz)
 		const uint32_t timestamp = s_tx_cache.items[0].timestamp;
-		const uint32_t timeout_tick = tx_tick + TIMEOUT;
+		const uint32_t timeout_tick = timestamp + TIMEOUT;
 
 		// Wait for the message to time out.
 		osDelayUntil(timeout_tick);
@@ -366,16 +356,16 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 		ack.msg.recipient = item.msg.sender;
 		ack.msg.sender = item.msg.recipient;
 		ack.msg.is_ack = true;
-		osMessageQueuePut(&ack_queue, &ack, 0U, 0U);
+		osMessageQueuePut(&s_ack_queue, &ack, 0U, 0U);
 	}
 	if (rx_behaviour | RX_HANDLE)
 	{
-		osMessageQueuePut(&msg_queue, &item, 0U, 0U);
+		osMessageQueuePut(&s_msg_queue, &item, 0U, 0U);
 	}
 	if (rx_behaviour | RX_CLEAR_TX_STORE && item.msg.is_ack)
 	{
 		// Clear the corresponding message in the TxCache if it exists.
-		int index = TxCache_Find(&s_tx_cache, msg);
+		int index = TxCache_Find(&s_tx_cache, &item.msg);
 		if (index > 0)
 		{
 			TxCache_Erase(&s_tx_cache, index);
