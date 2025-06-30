@@ -278,7 +278,7 @@ void Error_Handler_Thread(void *argument)
 
 		// Trigger user callback if the same message is still in the cache
 		// (comparing timestamps to reduce read instructions).
-		if (timestamp == s_tx_cache.items[0].timestamp)
+		while (timestamp == s_tx_cache.items[0].timestamp)
 		{
 			CANWrapper_ErrorInfo error;
 			error.error = CAN_WRAPPER_ERROR_TIMEOUT;
