@@ -21,8 +21,6 @@
 
 #define TIMEOUT 3600
 
-#define PERIOD_TICKS 5000
-
 #define QUEUE_SIZE 64
 
 typedef struct
@@ -257,6 +255,12 @@ void Acknowledgement_Thread(void *argument)
 
 void Error_Handler_Thread(void *argument)
 {
+	// Convert timeout from microseconds to ticks,
+	// using ceiling division and adding an extra tick
+	// to guarantee the delay isn't shorter than the timeout.
+	const uint32_t tick_frequency = osKernelGetTickFreq();
+	const uint32_t timeout_ticks = 1 + (TIMEOUT * tick_frequency + 999999) / 1000000;
+
 	CANWrapper_ErrorInfo item;
 
 	// Infinite loop
@@ -268,13 +272,12 @@ void Error_Handler_Thread(void *argument)
 			osThreadFlagsWait(0U, osFlagsWaitAny, osWaitForever);
 		}
 
-		// Calculate timeout tick
-		// (assuming TIMEOUT is in milliseconds and RTOS ticks are 1 KHz)
+		// Calculate the first (oldest) message's timeout tick.
 		const uint32_t timestamp = s_tx_cache.items[0].timestamp;
-		const uint32_t timeout_tick = timestamp + TIMEOUT;
+		const uint32_t timeout = timestamp + timeout_ticks;
 
 		// Wait for the message to time out.
-		osDelayUntil(timeout_tick);
+		osDelayUntil(timeout);
 
 		// Trigger user callback if the same message is still in the cache
 		// (comparing timestamps to reduce read instructions).
