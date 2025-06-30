@@ -202,6 +202,7 @@ ErrorCode CANWrapper_Transmit_Raw(CAN_HandleTypeDef *hcan, const CANMessage *msg
 	return status;
 }
 
+#ifdef CWM_API_STANDARD
 ErrorCode CANWrapper_Transmit(CAN_HandleTypeDef *hcan, NodeID recipient, CmdID cmd, const uint8_t *body)
 {
 	CANMessage msg = {
@@ -217,6 +218,7 @@ ErrorCode CANWrapper_Transmit(CAN_HandleTypeDef *hcan, NodeID recipient, CmdID c
 
 	return CANWrapper_Transmit_Raw(hcan, &msg, true);
 }
+#endif
 
 ////////////////////////////////////////
 /// Threads
