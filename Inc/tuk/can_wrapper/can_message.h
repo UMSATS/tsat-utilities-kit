@@ -32,28 +32,29 @@ typedef struct
 {
 	CmdID cmd;
 	uint8_t body[CAN_MAX_BODY_SIZE];
+	uint8_t body_size;
 	uint8_t priority;
 	NodeID sender;
 	NodeID recipient;
 	uint8_t is_ack;
 } CANMessage;
 
-// Macros to get & set arguments in a command.
+// Macros to get & set arguments in a message.
 // NOTE: These assume consistent endianness across subsystems. If a subsystem
 // switches to a big-endian processor, that subsystem will have to perform a
 // byte swap of the message contents.
 
 // Example Usage: float arg = GET_MSG_DATA(msg.body, 0, float);
-#define GET_MSG_DATA(body, pos, type) ({ \
+#define GET_MSG_DATA(body, byte_pos, type) ({ \
 	type var; \
-	memcpy(&var, &body[pos], sizeof(var)); \
+	memcpy(&var, &body[byte_pos], sizeof(var)); \
 	var; \
 	})
 
 // Example Usage: SET_MSG_DATA(byte_array, 0, uint8_t, 29);
-#define SET_MSG_DATA(body, pos, type, value) do { \
+#define SET_MSG_DATA(body, byte_pos, type, value) do { \
 	type var = value; \
-	memcpy(&body[pos], &var, sizeof(var)); \
+	memcpy(&body[byte_pos], &var, sizeof(var)); \
 	} while (0)
 
 #endif /* CAN_WRAPPER_MODULE_INC_CAN_MESSAGE_H_ */

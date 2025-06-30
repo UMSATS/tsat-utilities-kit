@@ -6,7 +6,7 @@
 
 #include "tuk/can_wrapper/can_command_list.h"
 
-const CmdConfig cmd_configs[NUM_COMMANDS] = {
+const CmdConfig CMD_CONFIGS[NUM_COMMANDS] = {
 		////////////////////////////////////////////
 		/// COMMON
 		////////////////////////////////////////////

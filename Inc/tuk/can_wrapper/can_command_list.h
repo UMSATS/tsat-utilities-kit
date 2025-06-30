@@ -103,6 +103,6 @@ typedef struct
 	uint8_t priority;
 } CmdConfig;
 
-extern const CmdConfig cmd_configs[NUM_COMMANDS];
+extern const CmdConfig CMD_CONFIGS[NUM_COMMANDS];
 
 #endif /* CAN_WRAPPER_MODULE_INC_CAN_COMMAND_LIST_H_ */
