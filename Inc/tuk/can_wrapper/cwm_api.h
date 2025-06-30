@@ -8,7 +8,7 @@
 #ifdef CAN_WRAPPER_ADVANCED_API
 	#define CWM_API_ADVANCED
 #else
-	#define CWM_API_NORMAL
+	#define CWM_API_STANDARD
 #endif
 
 #endif /* TSAT_UTILITIES_KIT_INC_TUK_CAN_WRAPPER_CWM_API_H_ */

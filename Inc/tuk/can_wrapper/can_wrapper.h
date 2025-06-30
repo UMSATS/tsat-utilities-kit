@@ -38,7 +38,7 @@ typedef void (*CANErrorCallback)(const CANWrapper_ErrorInfo*);
 
 typedef struct
 {
-#ifdef CWM_API_NORMAL
+#ifdef CWM_API_STANDARD
 	NodeID node_id; // Your subsystem's unique ID in the network.
 #endif
 
@@ -75,7 +75,7 @@ ErrorCode CANWrapper_Init(const CANWrapper_InitTypeDef *init_struct);
  */
 ErrorCode CANWrapper_CAN_Start(CAN_HandleTypeDef *hcan);
 
-#ifdef CWM_API_NORMAL
+#ifdef CWM_API_STANDARD
 /**
  * Sends a message using the TSAT protocol.
  *

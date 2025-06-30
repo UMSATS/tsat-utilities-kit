@@ -69,7 +69,7 @@ static void Error_Handler_Thread(void *argument);
 
 ErrorCode CANWrapper_Init(const CANWrapper_InitTypeDef *init_struct)
 {
-#ifdef CWM_API_NORMAL
+#ifdef CWM_API_STANDARD
 	ASSERT_PARAM(init_struct->node_id <= NODE_ID_MAX, ERR_ARG_OUT_OF_RANGE);
 #endif
 	ASSERT_PARAM(init_struct->message_callback != NULL, ERR_NULL_ARG);
@@ -326,7 +326,7 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 	// Define what actions to take in response to this message.
 	uint8_t rx_behaviour = 0;
 
-#ifdef CWM_API_NORMAL
+#ifdef CWM_API_STANDARD
 	if (item.msg.recipient == s_init_struct.node_id &&
 			item.msg.sender != s_init_struct.node_id)
 	{
