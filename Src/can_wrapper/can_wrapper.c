@@ -256,7 +256,7 @@ void Error_Handler_Thread(void *argument)
 {
 	// Convert timeout from milliseconds to ticks.
 	const uint32_t TICK_FREQ = osKernelGetTickFreq();
-	const uint32_t TIMEOUT_TICKS = 1 + (uint32_t)TIMEOUT_MS * TICK_FREQ / 1000;
+	const uint32_t TIMEOUT_TICKS = (uint32_t)TIMEOUT_MS * TICK_FREQ / 1000;
 
 	// Infinite loop
 	while (1)
@@ -272,7 +272,7 @@ void Error_Handler_Thread(void *argument)
 		const uint32_t timeout = timestamp + TIMEOUT_TICKS;
 
 		// Wait for the message to time out.
-		osDelayUntil(timeout);
+		osDelayUntil(timeout + 1); // +1 ensures minimum wait time is met.
 
 		// Trigger user callback if the same message is still in the cache
 		// (comparing timestamps to reduce read instructions).
