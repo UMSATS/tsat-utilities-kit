@@ -5,8 +5,7 @@
  */
 
 #include "tuk/can_wrapper/can_wrapper.h"
-#include "tuk/can_wrapper/can_queue.h"
-#include "tuk/can_wrapper/error_queue.h"
+#include "tuk/can_wrapper/error_info.h"
 #include "tuk/can_wrapper/tx_cache.h"
 #include "tuk/debug.h"
 #include "tuk/utils.h"
@@ -19,7 +18,7 @@
 #define SENDER_MASK    0b00000011000
 #define PRIORITY_MASK  0b11111100000
 
-#define TIMEOUT 3600
+#define TIMEOUT_MS 4
 
 #define QUEUE_SIZE 64
 
@@ -177,7 +176,7 @@ ErrorCode CANWrapper_Transmit_Raw(CAN_HandleTypeDef *hcan, const CANMessage *msg
 	/* Load the message into a mailbox */
 	uint32_t tx_mailbox;
 	HAL_StatusTypeDef status;
-	status = HAL_CAN_AddTxMessage(hcan, &tx_header, &msg->body, &tx_mailbox);
+	status = HAL_CAN_AddTxMessage(hcan, &tx_header, msg->body, &tx_mailbox);
 
 	/* Update the TX cache */
 	if (status == HAL_OK && !msg->is_ack && strict_timeout)
@@ -255,18 +254,14 @@ void Acknowledgement_Thread(void *argument)
 
 void Error_Handler_Thread(void *argument)
 {
-	// Convert timeout from microseconds to ticks,
-	// using ceiling division and adding an extra tick
-	// to guarantee the delay isn't shorter than the timeout.
-	const uint32_t tick_frequency = osKernelGetTickFreq();
-	const uint32_t timeout_ticks = 1 + (TIMEOUT * tick_frequency + 999999) / 1000000;
-
-	CANWrapper_ErrorInfo item;
+	// Convert timeout from milliseconds to ticks.
+	const uint32_t TICK_FREQ = osKernelGetTickFreq();
+	const uint32_t TIMEOUT_TICKS = 1 + (uint32_t)TIMEOUT_MS * TICK_FREQ / 1000;
 
 	// Infinite loop
 	while (1)
 	{
-		// Wait for a message in the Tx cache.
+		// Wait for a message in the TX cache.
 		if (s_tx_cache.size == 0)
 		{
 			osThreadFlagsWait(0U, osFlagsWaitAny, osWaitForever);
@@ -274,7 +269,7 @@ void Error_Handler_Thread(void *argument)
 
 		// Calculate the first (oldest) message's timeout tick.
 		const uint32_t timestamp = s_tx_cache.items[0].timestamp;
-		const uint32_t timeout = timestamp + timeout_ticks;
+		const uint32_t timeout = timestamp + TIMEOUT_TICKS;
 
 		// Wait for the message to time out.
 		osDelayUntil(timeout);

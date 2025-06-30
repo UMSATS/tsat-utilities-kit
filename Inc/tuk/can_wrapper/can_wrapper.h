@@ -11,9 +11,7 @@
 #include "hal_include.h"
 #include "can_command_list.h"
 #include "can_message.h"
-#include "can_queue.h"
 #include "error_info.h"
-#include "error_queue.h"
 #include "telemetry_id.h"
 
 #include "tuk/error_list.h"
