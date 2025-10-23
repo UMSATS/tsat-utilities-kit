@@ -52,9 +52,9 @@ jobs:
           -T STM32F407VGTx_FLASH.ld \
           -Wl,-Map=build/test.map,--cref -Wl,--gc-sections \
           -o build/test.elf \
-          src/main.c src/can_wrapper.c src/test_can_wrapper.c \
-          src/tx_cache.c src/can_command_list.c src/debug_logger.c \
-          src/print.c src/log_buffer.c \
+          Src/main.c Src/can_wrapper.c Src/test_can_wrapper.c \
+          Src/tx_cache.c Src/can_command_list.c Src/debug_logger.c \
+          Src/print.c Src/log_buffer.c \
           -lc -lm -lnosys
     
     - name: Build Production Version  
@@ -74,9 +74,9 @@ jobs:
           -T STM32F407VGTx_FLASH.ld \
           -Wl,-Map=build/production.map,--cref -Wl,--gc-sections \
           -o build/production.elf \
-          src/main.c src/can_wrapper.c \
-          src/tx_cache.c src/can_command_list.c src/debug_logger.c \
-          src/print.c src/log_buffer.c \
+          Src/main.c Src/can_wrapper.c \
+          Src/tx_cache.c Src/can_command_list.c Src/debug_logger.c \
+          Src/print.c Src/log_buffer.c \
           -lc -lm -lnosys
     
     - name: Generate Hex Files
@@ -145,7 +145,7 @@ jobs:
         
         # Check that only Cache_Manager_Thread touches s_tx_cache
         echo "Checking s_tx_cache access..."
-        if grep -n "s_tx_cache" src/can_wrapper.c | grep -v "Cache_Manager_Thread\|Process_Expired_Items"; then
+        if grep -n "s_tx_cache" Src/can_wrapper.c | grep -v "Cache_Manager_Thread\|Process_Expired_Items"; then
           echo "ERROR: s_tx_cache accessed outside Cache_Manager_Thread!"
           exit 1
         else
@@ -154,7 +154,7 @@ jobs:
         
         # Check ISR only uses queues
         echo "Checking ISR safety..."
-        if grep -A 20 "HAL_CAN_RxFifo0MsgPendingCallback" src/can_wrapper.c | grep -E "TxCache_|s_tx_cache"; then
+        if grep -A 20 "HAL_CAN_RxFifo0MsgPendingCallback" Src/can_wrapper.c | grep -E "TxCache_|s_tx_cache"; then
           echo "ERROR: ISR directly accesses cache!"
           exit 1
         else
@@ -163,7 +163,7 @@ jobs:
         
         # Check bit operations are fixed
         echo "Checking bit operations..."
-        if grep -n "rx_behaviour |" src/can_wrapper.c; then
+        if grep -n "rx_behaviour |" Src/can_wrapper.c; then
           echo "ERROR: Bitwise OR bug still present!"
           exit 1
         else
