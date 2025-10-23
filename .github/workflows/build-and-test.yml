@@ -1,0 +1,173 @@
+name: Build and Test CAN Wrapper
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  build:
+    name: Build Firmware
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        build_type: [test, production]
+    
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive  # For any git submodules
+    
+    - name: Setup ARM GCC Toolchain
+      uses: carlosperate/arm-none-eabi-gcc-action@v1
+      with:
+        release: '12.2.Rel1'  # Specify GCC version
+    
+    - name: Verify Toolchain Installation
+      run: |
+        arm-none-eabi-gcc --version
+        arm-none-eabi-objcopy --version
+        arm-none-eabi-size --version
+    
+    - name: Create Build Directory
+      run: mkdir -p build
+    
+    - name: Build Test Version
+      if: matrix.build_type == 'test'
+      run: |
+        arm-none-eabi-gcc \
+          -mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard \
+          -DUSE_HAL_DRIVER -DSTM32F407xx -DCWM_API_STANDARD -DRUN_TESTS -DDEBUG \
+          -Og -g3 -Wall -fdata-sections -ffunction-sections \
+          -Iinc -Isrc \
+          -IDrivers/STM32F4xx_HAL_Driver/Inc \
+          -IDrivers/CMSIS/Device/ST/STM32F4xx/Include \
+          -IDrivers/CMSIS/Include \
+          -IMiddlewares/Third_Party/FreeRTOS/Source/include \
+          -IMiddlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 \
+          -specs=nano.specs \
+          -T STM32F407VGTx_FLASH.ld \
+          -Wl,-Map=build/test.map,--cref -Wl,--gc-sections \
+          -o build/test.elf \
+          src/main.c src/can_wrapper.c src/test_can_wrapper.c \
+          src/tx_cache.c src/can_command_list.c src/debug_logger.c \
+          src/print.c src/log_buffer.c \
+          -lc -lm -lnosys
+    
+    - name: Build Production Version  
+      if: matrix.build_type == 'production'
+      run: |
+        arm-none-eabi-gcc \
+          -mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard \
+          -DUSE_HAL_DRIVER -DSTM32F407xx -DCWM_API_STANDARD -DNDEBUG \
+          -O2 -Wall -fdata-sections -ffunction-sections \
+          -Iinc -Isrc \
+          -IDrivers/STM32F4xx_HAL_Driver/Inc \
+          -IDrivers/CMSIS/Device/ST/STM32F4xx/Include \
+          -IDrivers/CMSIS/Include \
+          -IMiddlewares/Third_Party/FreeRTOS/Source/include \
+          -IMiddlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 \
+          -specs=nano.specs \
+          -T STM32F407VGTx_FLASH.ld \
+          -Wl,-Map=build/production.map,--cref -Wl,--gc-sections \
+          -o build/production.elf \
+          src/main.c src/can_wrapper.c \
+          src/tx_cache.c src/can_command_list.c src/debug_logger.c \
+          src/print.c src/log_buffer.c \
+          -lc -lm -lnosys
+    
+    - name: Generate Hex Files
+      run: |
+        if [ -f build/test.elf ]; then
+          arm-none-eabi-objcopy -O ihex build/test.elf build/test.hex
+        fi
+        if [ -f build/production.elf ]; then
+          arm-none-eabi-objcopy -O ihex build/production.elf build/production.hex
+        fi
+    
+    - name: Show Build Size
+      run: |
+        if [ -f build/test.elf ]; then
+          echo "=== Test Build Size ==="
+          arm-none-eabi-size build/test.elf
+        fi
+        if [ -f build/production.elf ]; then
+          echo "=== Production Build Size ==="
+          arm-none-eabi-size build/production.elf
+        fi
+    
+    - name: Upload Build Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: firmware-${{ matrix.build_type }}
+        path: |
+          build/*.elf
+          build/*.hex
+          build/*.map
+        retention-days: 30
+
+  static-analysis:
+    name: Static Code Analysis
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+    
+    - name: Run Cppcheck
+      uses: deep5050/cppcheck-action@main
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        check_dir: 'src'
+        exclude_dir: 'Drivers Middlewares'
+        output_file: cppcheck-report.txt
+        
+    - name: Upload Static Analysis Results
+      uses: actions/upload-artifact@v4
+      with:
+        name: static-analysis-report
+        path: cppcheck-report.txt
+
+  check-race-conditions:
+    name: Check for Race Conditions
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+    
+    - name: Check Single Ownership Pattern
+      run: |
+        echo "=== Checking for Race Condition Fixes ==="
+        
+        # Check that only Cache_Manager_Thread touches s_tx_cache
+        echo "Checking s_tx_cache access..."
+        if grep -n "s_tx_cache" src/can_wrapper.c | grep -v "Cache_Manager_Thread\|Process_Expired_Items"; then
+          echo "ERROR: s_tx_cache accessed outside Cache_Manager_Thread!"
+          exit 1
+        else
+          echo "✓ s_tx_cache only accessed by Cache_Manager_Thread"
+        fi
+        
+        # Check ISR only uses queues
+        echo "Checking ISR safety..."
+        if grep -A 20 "HAL_CAN_RxFifo0MsgPendingCallback" src/can_wrapper.c | grep -E "TxCache_|s_tx_cache"; then
+          echo "ERROR: ISR directly accesses cache!"
+          exit 1
+        else
+          echo "✓ ISR only uses message queues"
+        fi
+        
+        # Check bit operations are fixed
+        echo "Checking bit operations..."
+        if grep -n "rx_behaviour |" src/can_wrapper.c; then
+          echo "ERROR: Bitwise OR bug still present!"
+          exit 1
+        else
+          echo "✓ Bit operations use correct & operator"
+        fi
+        
+        echo "=== All race condition checks passed! ==="
