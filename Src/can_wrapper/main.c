@@ -1,4 +1,4 @@
-#include "tuk/can_wrapper/can_wrapper.h"
+#include "../../Inc/tuk/can_wrapper/can_wrapper.h"
 
 #ifdef RUN_TESTS
 #include "test_can_wrapper.h"

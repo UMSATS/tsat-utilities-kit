@@ -54,7 +54,7 @@ jobs:
           -o build/test.elf \
           Src/can_wrapper/main.c Src/can_wrapper/can_wrapper.c Src/can_wrapper/test_can_wrapper.c \
           Src/can_wrapper/tx_cache.c Src/can_wrapper/can_command_list.c Src/debug/debug_logger.c \
-          Src/debug/print.c Src/debug/log_buffer.c \
+          Src/debug/log_buffer.c \
           -lc -lm -lnosys
     
     - name: Build Production Version  
@@ -76,7 +76,7 @@ jobs:
           -o build/production.elf \
           Src/can_wrapper/main.c Src/can_wrapper/can_wrapper.c \
           Src/can_wrapper/tx_cache.c Src/can_wrapper/can_command_list.c Src/debug/debug_logger.c \
-          Src/debug/print.c Src/debug/log_buffer.c \
+          Src/debug/log_buffer.c \
           -lc -lm -lnosys
     
     - name: Generate Hex Files

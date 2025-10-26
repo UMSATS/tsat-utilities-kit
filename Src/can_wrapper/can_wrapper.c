@@ -5,11 +5,11 @@
  * IMPROVED VERSION: Single ownership pattern eliminates race conditions.
  */
 
-#include "tuk/can_wrapper/can_wrapper.h"
-#include "tuk/can_wrapper/error_info.h"
-#include "tuk/can_wrapper/tx_cache.h"
-#include "tuk/debug.h"
-#include "tuk/utils.h"
+#include "../../Inc/tuk/can_wrapper/can_wrapper.h"
+#include "../../Inc/tuk/can_wrapper/error_info.h"
+#include "../../Inc/tuk/can_wrapper/tx_cache.h"
+#include "../../Inc/tuk/debug/debug.h"
+#include "../../Inc/tuk/debug/utils.h"
 
 #include <stddef.h>
 

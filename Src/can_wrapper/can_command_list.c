@@ -4,7 +4,7 @@
  * Configurations for all valid command ID's.
  */
 
-#include "tuk/can_wrapper/can_command_list.h"
+#include "../../Inc/tuk/can_wrapper/can_command_list.h"
 
 const CmdConfig CMD_CONFIGS[NUM_COMMANDS] = {
 		////////////////////////////////////////////

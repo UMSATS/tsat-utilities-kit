@@ -2,8 +2,8 @@
  * @file debug_logger.c
  */
 
-#include "tuk/debug/debug_logger.h"
-#include "tuk/debug/print.h"
+#include "../../Inc/tuk/debug/debug_logger.h"
+#include "../../Inc/tuk/debug/print.h"
 
 #include <string.h>
 #include <stdint.h>

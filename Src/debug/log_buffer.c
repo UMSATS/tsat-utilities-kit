@@ -4,7 +4,7 @@
 
 #include <stdbool.h>
 
-#include "tuk/debug/log_buffer.h"
+#include "../../Inc/tuk/debug/log_buffer.h"
 
 bool LogBuffer_IsEmpty(const LogBuffer *log_buffer)
 {
