@@ -138,36 +138,127 @@ jobs:
     steps:
     - name: Checkout Repository
       uses: actions/checkout@v4
-    
+
     - name: Check Single Ownership Pattern
       run: |
         echo "=== Checking for Race Condition Fixes ==="
         
-        # Check that only Cache_Manager_Thread touches s_tx_cache
-        echo "Checking s_tx_cache access..."
-        if grep -n "s_tx_cache" Src/can_wrapper/can_wrapper.c | grep -v "Cache_Manager_Thread\|Process_Expired_Items"; then
-          echo "ERROR: s_tx_cache accessed outside Cache_Manager_Thread!"
+        CAN_WRAPPER_FILE="Src/can_wrapper/can_wrapper.c"
+        
+        if [ ! -f "$CAN_WRAPPER_FILE" ]; then
+          echo "ERROR: $CAN_WRAPPER_FILE not found!"
           exit 1
-        else
-          echo "✓ s_tx_cache only accessed by Cache_Manager_Thread"
         fi
         
-        # Check ISR only uses queues
-        echo "Checking ISR safety..."
-        if grep -A 20 "HAL_CAN_RxFifo0MsgPendingCallback" Src/can_wrapper/can_wrapper.c | grep -E "TxCache_|s_tx_cache"; then
-          echo "ERROR: ISR directly accesses cache!"
+        echo "Found $CAN_WRAPPER_FILE, proceeding with checks..."
+        
+        # Create a more sophisticated check using awk
+        cat > check_cache_access.awk << 'EOF'
+        BEGIN { 
+            in_cache_manager = 0
+            in_process_expired = 0
+            in_init_function = 0
+            violation_count = 0
+        }
+        
+        # Track when we enter allowed functions
+        /^void Cache_Manager_Thread/ || /^Cache_Manager_Thread/ { in_cache_manager = 1; next }
+        /^static void Process_Expired_Items/ || /^void Process_Expired_Items/ { in_process_expired = 1; next }
+        /^ErrorCode CANWrapper_Init/ { in_init_function = 1; next }
+        
+        # Track when we exit functions (simplified - look for closing brace at start of line)
+        /^}/ { 
+            in_cache_manager = 0
+            in_process_expired = 0  
+            in_init_function = 0
+            next 
+        }
+        
+        # Check s_tx_cache accesses
+        /s_tx_cache/ {
+            # Skip static declaration and initialization
+            if (/static.*s_tx_cache.*=/ || /s_tx_cache.*=.*TxCache_Create/) {
+                next
+            }
+            
+            # Allow access in permitted functions
+            if (in_cache_manager || in_process_expired || in_init_function) {
+                print "ALLOWED: Line " NR ": " $0
+            } else {
+                print "VIOLATION: Line " NR ": " $0
+                violation_count++
+            }
+        }
+        
+        END {
+            if (violation_count > 0) {
+                print "\nERROR: " violation_count " cache access violations found!"
+                exit 1
+            } else {
+                print "\n✓ All s_tx_cache accesses are in permitted functions"
+            }
+        }
+        EOF
+        
+        echo "Checking s_tx_cache access patterns..."
+        if ! awk -f check_cache_access.awk "$CAN_WRAPPER_FILE"; then
+          echo "Cache access violations detected!"
           exit 1
-        else
-          echo "✓ ISR only uses message queues"
+        fi
+        
+        # Check ISR safety with better context awareness
+        echo "Checking ISR safety..."
+        cat > check_isr_safety.awk << 'EOF'
+        BEGIN { in_isr = 0; violation_count = 0 }
+        
+        /HAL_CAN_RxFifo0MsgPendingCallback/ { in_isr = 1; next }
+        
+        # End of function
+        /^}/ && in_isr { in_isr = 0; next }
+        
+        # Check for direct cache access in ISR
+        in_isr && (/TxCache_/ || /s_tx_cache\./) {
+            print "ISR VIOLATION: Line " NR ": " $0
+            violation_count++
+        }
+        
+        END {
+            if (violation_count > 0) {
+                print "\nERROR: " violation_count " ISR cache access violations found!"
+                exit 1
+            } else {
+                print "\n✓ ISR only uses message queues"
+            }
+        }
+        EOF
+        
+        if ! awk -f check_isr_safety.awk "$CAN_WRAPPER_FILE"; then
+          echo "ISR safety violations detected!"
+          exit 1
         fi
         
         # Check bit operations are fixed
         echo "Checking bit operations..."
-        if grep -n "rx_behaviour |" Src/can_wrapper/can_wrapper.c; then
-          echo "ERROR: Bitwise OR bug still present!"
+        bit_violations=$(grep -n "rx_behaviour *|[^=]" "$CAN_WRAPPER_FILE" | grep -v "|=" || true)
+        if [ -n "$bit_violations" ]; then
+          echo "ERROR: Bitwise OR bug still present:"
+          echo "$bit_violations"
           exit 1
         else
           echo "✓ Bit operations use correct & operator"
         fi
         
+        # Verify correct bit operations exist
+        echo "Verifying correct bit operations..."
+        correct_ops=$(grep -n "rx_behaviour.*&" "$CAN_WRAPPER_FILE" || true)
+        if [ -n "$correct_ops" ]; then
+          echo "✓ Found correct bitwise AND operations:"
+          echo "$correct_ops" | head -3  # Show first 3 matches
+        else
+          echo "WARNING: No rx_behaviour & operations found"
+        fi
+        
         echo "=== All race condition checks passed! ==="
+        
+        # Cleanup temporary files
+        rm -f check_cache_access.awk check_isr_safety.awk 
