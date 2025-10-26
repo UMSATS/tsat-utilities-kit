@@ -74,9 +74,9 @@ jobs:
           -T STM32F407VGTx_FLASH.ld \
           -Wl,-Map=build/production.map,--cref -Wl,--gc-sections \
           -o build/production.elf \
-          src/main.c src/can_wrapper.c \
-          src/tx_cache.c src/can_command_list.c src/debug_logger.c \
-          src/print.c src/log_buffer.c \
+          src/can_wrapper/main.c src/can_wrapper/can_wrapper.c \
+          src/can_wrapper/tx_cache.c src/can_wrapper/can_command_list.c src/debug/debug_logger.c \
+          src/debug/print.c src/debug/log_buffer.c \
           -lc -lm -lnosys
     
     - name: Generate Hex Files
