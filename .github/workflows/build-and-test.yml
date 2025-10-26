@@ -52,9 +52,9 @@ jobs:
           -T STM32F407VGTx_FLASH.ld \
           -Wl,-Map=build/test.map,--cref -Wl,--gc-sections \
           -o build/test.elf \
-          Src/main.c Src/can_wrapper.c Src/test_can_wrapper.c \
-          Src/tx_cache.c Src/can_command_list.c Src/debug_logger.c \
-          Src/print.c Src/log_buffer.c \
+          src/main.c src/can_wrapper.c src/test_can_wrapper.c \
+          src/tx_cache.c src/can_command_list.c src/debug_logger.c \
+          src/print.c src/log_buffer.c \
           -lc -lm -lnosys
     
     - name: Build Production Version  
@@ -74,9 +74,9 @@ jobs:
           -T STM32F407VGTx_FLASH.ld \
           -Wl,-Map=build/production.map,--cref -Wl,--gc-sections \
           -o build/production.elf \
-          Src/main.c Src/can_wrapper.c \
-          Src/tx_cache.c Src/can_command_list.c Src/debug_logger.c \
-          Src/print.c Src/log_buffer.c \
+          src/main.c src/can_wrapper.c \
+          src/tx_cache.c src/can_command_list.c src/debug_logger.c \
+          src/print.c src/log_buffer.c \
           -lc -lm -lnosys
     
     - name: Generate Hex Files
