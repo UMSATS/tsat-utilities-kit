@@ -16,7 +16,7 @@
 
 #include "tuk/error_list.h"
 
-#include "cmsis_os.h"
+// #include "cmsis_os.h"
 
 #include <stdbool.h>
 #include <stdint.h>

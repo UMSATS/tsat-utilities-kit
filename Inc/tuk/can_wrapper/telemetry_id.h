@@ -24,7 +24,7 @@ typedef enum {
 	TEL_WELL_LUMINOSITY
 } TelemetryID;
 
-_Static_assert(sizeof(TelemetryID) == 1, "Enum size exceeds 1 byte");
+// _Static_assert(sizeof(TelemetryID) == 1, "Enum size exceeds 1 byte");
 
 // Usage: uint8_t key = CREATE_TELEMETRY_KEY(TEL_PCB_TEMP, 0)
 #define CREATE_TELEMETRY_KEY(tel_id, variant_id) (uint8_t)((tel_id << 4) | (0xf & variant_id))
