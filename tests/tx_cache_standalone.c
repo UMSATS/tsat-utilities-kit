@@ -1,22 +1,14 @@
 /** (c) 2024 UMSATS
- * @file tx_cache.c
+ * @file tx_cache_standalone.c
  *
- * List ADT that caches transmitted CAN messages.
- * Implemented using circular buffer.
- *
- * THREAD SAFETY:
- * This module does NOT provide internal synchronization. The caller is
- * responsible for ensuring thread-safe access to TxCache instances.
- *
- * In can_wrapper.c, the Cache_Manager_Thread is the SINGLE OWNER of s_tx_cache.
- * All cache operations must go through the cache command queue - never access
- * the cache directly from other threads or ISRs.
+ * Standalone version of tx_cache.c for testing without STM32 HAL dependencies.
+ * This file mirrors the implementation in Src/can_wrapper/tx_cache.c
  */
 
-#include <stdbool.h>
-#include <assert.h>
+#include "mock_tx_cache.h"
+#include <string.h>
 #include <stddef.h>
-#include <../../Inc/tuk/can_wrapper/tx_cache.h>
+#include <assert.h>
 
 static bool is_matching_ack(const CANMessage *msg, const CANMessage *ack);
 
@@ -29,6 +21,8 @@ static bool TxCache_IsValid(const TxCache *txc)
 	if (txc->tail >= TX_CACHE_SIZE) return false;
 	return true;
 }
+#else
+#define TxCache_IsValid(txc) (true)
 #endif
 
 TxCache TxCache_Create(void)
@@ -42,19 +36,19 @@ TxCache TxCache_Create(void)
 	return tx_cache;
 }
 
-bool TxCache_IsFull(const TxCache* txc)
+bool TxCache_Is_Full(const TxCache* txc)
 {
 	if (txc == NULL) return true;
 	assert(TxCache_IsValid(txc));
 	return (txc->tail + 1) % TX_CACHE_SIZE == txc->head;
 }
 
-bool TxCache_Push_Back(TxCache *txc, TxCacheItem *item)
+bool TxCache_Push_Back(TxCache *txc, const TxCacheItem *item)
 {
 	if (txc == NULL || item == NULL) return false;
 	assert(TxCache_IsValid(txc));
 
-	if (TxCache_IsFull(txc))
+	if (TxCache_Is_Full(txc))
 		return false;
 
 	txc->items[txc->tail] = *item;

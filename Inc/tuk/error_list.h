@@ -29,6 +29,12 @@ typedef enum {
 	ERR_CWM_FAILED_TO_ENABLE_INTERRUPT, // Couldn't enable CAN interrupt.
 	ERR_CWM_TX_FAIL_BAD_CAN_STATE,      // The CAN controller is unavailable.
 	ERR_CWM_TX_MAILBOXES_FULL,
+	ERR_CWM_RTOS_QUEUE_CREATE_FAILED,   // Failed to create RTOS queue.
+	ERR_CWM_RTOS_THREAD_CREATE_FAILED,  // Failed to create RTOS thread.
+	ERR_CWM_CACHE_QUEUE_FULL,           // Cache command queue is full.
+	ERR_CWM_ACK_QUEUE_FULL,             // ACK queue is full.
+	ERR_CWM_MSG_QUEUE_FULL,             // Message queue is full.
+	ERR_CWM_ERROR_QUEUE_FULL,           // Error notification queue is full.
 
 	// HAL FUNCTIONS
 	ERR_ADC_CALIBRATION_START,
