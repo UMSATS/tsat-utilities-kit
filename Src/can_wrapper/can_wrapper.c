@@ -3,42 +3,6 @@
  *
  * CAN wrapper for simplified CAN transmission & reception.
  * IMPROVED VERSION: Single ownership pattern eliminates race conditions.
- *
- * THREAD SAFETY:
- * ==============
- * This module uses a single-owner pattern for race-condition-free operation:
- *
- * SHARED STATE:
- * - s_init:         Read by multiple threads. Must be set AFTER full init completes.
- * - s_init_struct:  Written once in Init, read by threads/ISR. Init must complete
- *                   before osKernelStart().
- * - s_tx_cache:     SINGLE OWNER: Cache_Manager_Thread. All other threads/ISR
- *                   communicate via commands in s_cache_command_queue.
- * - s_stats:        Updated by multiple threads. Individual counters are best-effort
- *                   (may lose counts under high contention, but this is acceptable for
- *                   diagnostics).
- *
- * RTOS OBJECTS (read-only after init):
- * - s_ack_queue, s_msg_queue, s_cache_command_queue, s_error_notification_queue
- * - s_ack_task, s_msg_handler_task, s_cache_manager_task, s_error_callback_task
- *
- * INITIALIZATION REQUIREMENTS:
- * - CANWrapper_Init() must complete before osKernelStart()
- * - No other CAN wrapper functions should be called during Init
- * - After Init completes, all operations are thread-safe and ISR-safe
- *
- * ISR SAFETY:
- * - HAL_CAN_RxFifo0MsgPendingCallback runs in ISR context
- * - Only queues operations, never blocks
- * - All osMessageQueuePut calls use 0 timeout
- * - Queue overflows are tracked in statistics
- *
- * QUEUE FULL BEHAVIOR:
- * - If cache_command_queue is full: TX succeeds but timeout tracking may fail
- * - If ack_queue is full: ACK is lost (tracked in stats)
- * - If msg_queue is full: Message is lost (tracked in stats)
- * - If error_queue is full: Error callback is lost (tracked in stats)
- * - All overflows are counted for telemetry/debugging
  */
 
 #include "../../Inc/tuk/can_wrapper/can_wrapper.h"
@@ -100,22 +64,6 @@ static CANWrapper_InitTypeDef s_init_struct = {0};
 static TxCache s_tx_cache = {0};
 
 ////////////////////////////////////////
-/// Diagnostic Statistics
-////////////////////////////////////////
-typedef struct {
-	uint32_t cache_queue_overflows;
-	uint32_t ack_queue_overflows;
-	uint32_t msg_queue_overflows;
-	uint32_t error_queue_overflows;
-	uint32_t messages_transmitted;
-	uint32_t messages_received;
-	uint32_t acks_sent;
-	uint32_t timeouts;
-} CANWrapper_Statistics;
-
-static CANWrapper_Statistics s_stats = {0};
-
-////////////////////////////////////////
 /// RTOS Objects
 ////////////////////////////////////////
 // Threads
@@ -133,12 +81,13 @@ static osMessageQueueId_t s_error_notification_queue;
 ////////////////////////////////////////
 /// Static Functions
 ////////////////////////////////////////
-static ErrorCode RTOS_Init(void);
+static void RTOS_Init();
 static void Message_Handler_Thread(void *argument);
 static void Acknowledgement_Thread(void *argument);
 static void Cache_Manager_Thread(void *argument);
 static void Error_Callback_Thread(void *argument);
-static void Process_Expired_Items(void);
+static uint32_t Calculate_Next_Timeout();
+static void Process_Expired_Items();
 
 ErrorCode CANWrapper_Init(const CANWrapper_InitTypeDef *init_struct)
 {
@@ -154,101 +103,53 @@ ErrorCode CANWrapper_Init(const CANWrapper_InitTypeDef *init_struct)
 
     s_init_struct = *init_struct;
     s_tx_cache = TxCache_Create();
-
-    ErrorCode rtos_status = RTOS_Init();
-    if (rtos_status != ERR_OK)
-    {
-        return rtos_status;
-    }
-
+    
+    RTOS_Init();
+    
     s_init = true;
     return ERR_OK;
 }
 
 /**
- * Creates all RTOS objects with validation.
- *
- * @return ERR_OK on success, error code on failure
+ * Creates all RTOS objects.
  */
-ErrorCode RTOS_Init(void)
+void RTOS_Init()
 {
-    /* Acknowledgement Queue */
-    s_ack_queue = osMessageQueueNew(QUEUE_SIZE, sizeof(CANQueueItem), NULL);
-    if (s_ack_queue == NULL)
-    {
-        return ERR_CWM_RTOS_QUEUE_CREATE_FAILED;
-    }
-
     /* Acknowledgement Thread */
+    s_ack_queue = osMessageQueueNew(QUEUE_SIZE, sizeof(CANQueueItem), NULL);
     osThreadAttr_t ack_attr = {
         .name = "CAN ACK Thread",
         .stack_size = 128 * 4,
         .priority = (osPriority_t) osPriorityHigh
     };
     s_ack_task = osThreadNew(Acknowledgement_Thread, NULL, &ack_attr);
-    if (s_ack_task == NULL)
-    {
-        return ERR_CWM_RTOS_THREAD_CREATE_FAILED;
-    }
-
-    /* Message Handler Queue */
-    s_msg_queue = osMessageQueueNew(QUEUE_SIZE, sizeof(CANQueueItem), NULL);
-    if (s_msg_queue == NULL)
-    {
-        return ERR_CWM_RTOS_QUEUE_CREATE_FAILED;
-    }
 
     /* Message Handler Thread */
+    s_msg_queue = osMessageQueueNew(QUEUE_SIZE, sizeof(CANQueueItem), NULL);
     osThreadAttr_t msg_handler_attr = {
         .name = "CAN Message Handler Thread",
         .stack_size = 128 * 4,
         .priority = (osPriority_t) osPriorityNormal
     };
     s_msg_handler_task = osThreadNew(Message_Handler_Thread, NULL, &msg_handler_attr);
-    if (s_msg_handler_task == NULL)
-    {
-        return ERR_CWM_RTOS_THREAD_CREATE_FAILED;
-    }
-
-    /* Cache Command Queue */
-    s_cache_command_queue = osMessageQueueNew(QUEUE_SIZE, sizeof(CacheCommand), NULL);
-    if (s_cache_command_queue == NULL)
-    {
-        return ERR_CWM_RTOS_QUEUE_CREATE_FAILED;
-    }
 
     /* Cache Manager Thread - SINGLE OWNER of tx_cache */
+    s_cache_command_queue = osMessageQueueNew(QUEUE_SIZE, sizeof(CacheCommand), NULL);
     osThreadAttr_t cache_manager_attr = {
         .name = "CAN Cache Manager Thread",
         .stack_size = 128 * 4,
         .priority = (osPriority_t) osPriorityHigh  // High priority for timely processing
     };
     s_cache_manager_task = osThreadNew(Cache_Manager_Thread, NULL, &cache_manager_attr);
-    if (s_cache_manager_task == NULL)
-    {
-        return ERR_CWM_RTOS_THREAD_CREATE_FAILED;
-    }
-
-    /* Error Notification Queue */
-    s_error_notification_queue = osMessageQueueNew(QUEUE_SIZE, sizeof(ErrorNotification), NULL);
-    if (s_error_notification_queue == NULL)
-    {
-        return ERR_CWM_RTOS_QUEUE_CREATE_FAILED;
-    }
 
     /* Error Callback Thread */
+    s_error_notification_queue = osMessageQueueNew(QUEUE_SIZE, sizeof(ErrorNotification), NULL);
     osThreadAttr_t error_callback_attr = {
         .name = "CAN Error Callback Thread",
         .stack_size = 128 * 4,
         .priority = (osPriority_t) osPriorityNormal
     };
     s_error_callback_task = osThreadNew(Error_Callback_Thread, NULL, &error_callback_attr);
-    if (s_error_callback_task == NULL)
-    {
-        return ERR_CWM_RTOS_THREAD_CREATE_FAILED;
-    }
-
-    return ERR_OK;
 }
 
 ErrorCode CANWrapper_CAN_Start(CAN_HandleTypeDef *hcan)
@@ -312,23 +213,11 @@ ErrorCode CANWrapper_Transmit_Raw(CAN_HandleTypeDef *hcan, const CANMessage *msg
             .msg = *msg,
             .timestamp = osKernelGetTickCount()
         };
-
+        
         // Queue command to cache manager
-        osStatus_t queue_status = osMessageQueuePut(s_cache_command_queue, &cmd, 0U, 0U);
-        if (queue_status != osOK)
-        {
-            // Queue full - timeout tracking will fail, but TX succeeded
-            s_stats.cache_queue_overflows++;
-            // Note: We continue anyway as TX was successful
-        }
-        else
-        {
-            s_stats.messages_transmitted++;
-        }
-    }
-    else if (status == HAL_OK)
-    {
-        s_stats.messages_transmitted++;
+        // Note: We don't check return value here as it's better to continue
+        // even if cache tracking fails
+        osMessageQueuePut(s_cache_command_queue, &cmd, 0U, 0U);
     }
 
 #ifdef CWM_API_ADVANCED
@@ -484,7 +373,7 @@ void Error_Callback_Thread(void *argument)
  * Process expired items in the cache.
  * Called only by Cache_Manager_Thread.
  */
-static void Process_Expired_Items(void)
+static void Process_Expired_Items()
 {
     const uint32_t TICK_FREQ = osKernelGetTickFreq();
     const uint32_t TIMEOUT_TICKS = (uint32_t)TIMEOUT_MS * TICK_FREQ / 1000;
@@ -493,34 +382,19 @@ static void Process_Expired_Items(void)
     // Process all expired items (cache is sorted by timestamp)
     while (s_tx_cache.size > 0)
     {
-        // Use TxCache_At for safe access (better encapsulation)
-        const TxCacheItem *oldest_item = TxCache_At(&s_tx_cache, 0);
-        if (oldest_item == NULL)
-        {
-            break;  // Safety check - should never happen
-        }
-
-        uint32_t item_timeout = oldest_item->timestamp + TIMEOUT_TICKS;
-
+        uint32_t item_timeout = s_tx_cache.items[0].timestamp + TIMEOUT_TICKS;
+        
         if (item_timeout <= current_time)
         {
             // Item has expired - queue error notification
             ErrorNotification error = {
                 .error = CAN_WRAPPER_ERROR_TIMEOUT,
-                .msg = oldest_item->msg
+                .msg = s_tx_cache.items[0].msg
             };
-
+            
             // Queue error notification (non-blocking)
-            osStatus_t status = osMessageQueuePut(s_error_notification_queue, &error, 0U, 0U);
-            if (status != osOK)
-            {
-                // Error queue full - error callback will be lost
-                s_stats.error_queue_overflows++;
-            }
-
-            // Track timeout
-            s_stats.timeouts++;
-
+            osMessageQueuePut(s_error_notification_queue, &error, 0U, 0U);
+            
             // Remove expired item
             TxCache_Erase(&s_tx_cache, 0);
         }
@@ -581,9 +455,6 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
     s_init_struct.rx_callback(item.hcan, &item.msg, &rx_behaviour);
 #endif
 
-    // Track received message
-    s_stats.messages_received++;
-
     // Fixed: Changed | to & for proper bit checking
     if ((rx_behaviour & RX_ACK) && !item.msg.is_ack)
     {
@@ -593,29 +464,14 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
         ack.msg.recipient = item.msg.sender;
         ack.msg.sender = item.msg.recipient;
         ack.msg.is_ack = true;
-
-        osStatus_t status = osMessageQueuePut(s_ack_queue, &ack, 0U, 0U);
-        if (status == osOK)
-        {
-            s_stats.acks_sent++;
-        }
-        else
-        {
-            // ACK queue full - ACK will be lost
-            s_stats.ack_queue_overflows++;
-        }
+        osMessageQueuePut(s_ack_queue, &ack, 0U, 0U);
     }
-
+    
     if (rx_behaviour & RX_HANDLE)
     {
-        osStatus_t status = osMessageQueuePut(s_msg_queue, &item, 0U, 0U);
-        if (status != osOK)
-        {
-            // Message queue full - message will be lost
-            s_stats.msg_queue_overflows++;
-        }
+        osMessageQueuePut(s_msg_queue, &item, 0U, 0U);
     }
-
+    
     if ((rx_behaviour & RX_CLEAR_TX_STORE) && item.msg.is_ack)
     {
         // Send remove command to cache manager instead of direct access
@@ -623,14 +479,7 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
             .type = CACHE_CMD_REMOVE_BY_ACK,
             .msg = item.msg
         };
-
-        osStatus_t status = osMessageQueuePut(s_cache_command_queue, &cmd, 0U, 0U);
-        if (status != osOK)
-        {
-            // Cache command queue full - message will not be removed from cache
-            // This could lead to spurious timeouts
-            s_stats.cache_queue_overflows++;
-        }
+        osMessageQueuePut(s_cache_command_queue, &cmd, 0U, 0U);
     }
 }
 

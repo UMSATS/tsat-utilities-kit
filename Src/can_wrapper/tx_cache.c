@@ -1,29 +1,14 @@
 /** (c) 2024 UMSATS
- * @file tx_cache.c
+ * @file tx_cache.h
  *
  * List ADT that caches transmitted CAN messages.
  * Implemented using circular buffer.
- *
- * THREAD SAFETY: This data structure is NOT internally synchronized.
- * External synchronization is required. Designed for single-owner pattern
- * where one thread (Cache_Manager_Thread) has exclusive access.
  */
 
 #include <stdbool.h>
-#include <assert.h>
 #include <../../Inc/tuk/can_wrapper/tx_cache.h>
 
 static bool is_matching_ack(const CANMessage *msg, const CANMessage *ack);
-
-// Internal validation helper
-static inline bool TxCache_IsValid(const TxCache *txc)
-{
-	assert(txc != NULL);
-	assert(txc->size <= TX_CACHE_SIZE);
-	assert(txc->head < TX_CACHE_SIZE);
-	assert(txc->tail < TX_CACHE_SIZE);
-	return true;
-}
 
 TxCache TxCache_Create()
 {
@@ -43,10 +28,6 @@ bool TxCache_IsFull(const TxCache* txc)
 
 bool TxCache_Push_Back(TxCache *txc, TxCacheItem *item)
 {
-	assert(txc != NULL);
-	assert(item != NULL);
-	TxCache_IsValid(txc);
-
 	if (TxCache_IsFull(txc))
 		return false;
 
@@ -54,16 +35,11 @@ bool TxCache_Push_Back(TxCache *txc, TxCacheItem *item)
 	txc->tail = (txc->tail + 1) % TX_CACHE_SIZE;
 	txc->size++;
 
-	TxCache_IsValid(txc);
 	return true;
 }
 
 int TxCache_Find(const TxCache *txc, const CANMessage *ack)
 {
-	assert(txc != NULL);
-	assert(ack != NULL);
-	TxCache_IsValid(txc);
-
 	int index = 0;
 	int i = txc->head;
 	while (i != txc->tail && !is_matching_ack(&txc->items[i].msg, ack))
@@ -80,37 +56,28 @@ int TxCache_Find(const TxCache *txc, const CANMessage *ack)
 
 bool TxCache_Erase(TxCache *txc, int index)
 {
-	assert(txc != NULL);
-	TxCache_IsValid(txc);
+	if (index < 0 || index >= txc->size) return false;
 
-	if (index < 0 || index >= (int)txc->size) return false;
-	if (txc->size == 0) return false; // Defensive check
-
-	// Shift all items after the erased one forward by one position
-	for (int i = index; i < (int)txc->size - 1; i++)
+	int cur_pos = txc->head;
+	int next_pos = (cur_pos + 1) % TX_CACHE_SIZE;
+	while (cur_pos != index && next_pos != txc->tail)
 	{
-		int current_pos = (txc->head + i) % TX_CACHE_SIZE;
-		int next_pos = (txc->head + i + 1) % TX_CACHE_SIZE;
-		txc->items[current_pos] = txc->items[next_pos];
+		txc->items[next_pos] = txc->items[cur_pos];
+		cur_pos = next_pos;
+		next_pos = (next_pos + 1) % TX_CACHE_SIZE;
 	}
 
-	// Move tail back by one position
-	txc->tail = (txc->tail - 1 + TX_CACHE_SIZE) % TX_CACHE_SIZE;
+	txc->head = (txc->head + 1) % TX_CACHE_SIZE;
 	txc->size--;
 
-	TxCache_IsValid(txc);
 	return true;
 }
 
 const TxCacheItem *TxCache_At(const TxCache *txc, int index)
 {
-	assert(txc != NULL);
-	TxCache_IsValid(txc);
+	if (index < 0 || index >= txc->size) return NULL;
 
-	if (index < 0 || index >= (int)txc->size) return NULL;
-
-	// Calculate actual position in circular buffer accounting for head offset
-	int pos = (txc->head + index) % TX_CACHE_SIZE;
+	int pos = index % TX_CACHE_SIZE;
 	return &txc->items[pos];
 }
 
