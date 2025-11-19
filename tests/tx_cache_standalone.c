@@ -1,23 +1,23 @@
 /** (c) 2024 UMSATS
- * @file tx_cache.c
+ * @file tx_cache_standalone.c
  *
- * List ADT that caches transmitted CAN messages.
- * Implemented using circular buffer.
- *
- * THREAD SAFETY: This data structure is NOT internally synchronized.
- * External synchronization is required. Designed for single-owner pattern
- * where one thread (Cache_Manager_Thread) has exclusive access.
+ * Standalone version of tx_cache.c for testing.
+ * Uses mock types instead of real STM32 dependencies.
  */
 
 #include <stdbool.h>
 #include <assert.h>
-#include <../../Inc/tuk/can_wrapper/tx_cache.h>
+#include <string.h>
+#include "mock_can_message.h"
+#include "mock_tx_cache.h"
 
 static bool is_matching_ack(const CANMessage *msg, const CANMessage *ack);
 
 // Internal validation helper
 static inline bool TxCache_IsValid(const TxCache *txc)
 {
+	// In NDEBUG mode, assertions are removed, so silence unused parameter warning
+	(void)txc;
 	assert(txc != NULL);
 	assert(txc->size <= TX_CACHE_SIZE);
 	assert(txc->head < TX_CACHE_SIZE);
@@ -25,7 +25,7 @@ static inline bool TxCache_IsValid(const TxCache *txc)
 	return true;
 }
 
-TxCache TxCache_Create()
+TxCache TxCache_Create(void)
 {
 	TxCache tx_cache;
 
@@ -65,7 +65,7 @@ int TxCache_Find(const TxCache *txc, const CANMessage *ack)
 	TxCache_IsValid(txc);
 
 	int index = 0;
-	int i = txc->head;
+	uint32_t i = txc->head;
 	while (i != txc->tail && !is_matching_ack(&txc->items[i].msg, ack))
 	{
 		index++;
