@@ -51,12 +51,59 @@ static TxCache s_tx_cache = {0};
 /// RTOS Objects
 ////////////////////////////////////////
 // Threads
+typedef StaticTask_t osStaticThreadDef_t;
+
 static osThreadId_t s_ack_task;
+uint32_t ackTaskBuffer[ 128 * 4 ];
+osStaticThreadDef_t ackTaskControlBlock;
+const osThreadAttr_t ackTask_attributes = {
+  .name = "ackTask",
+  .cb_mem = &ackTaskControlBlock,
+  .cb_size = sizeof(ackTaskControlBlock),
+  .stack_mem = &ackTaskBuffer[0],
+  .stack_size = sizeof(ackTaskBuffer),
+  .priority = (osPriority_t) osPriorityHigh,
+};
+
 static osThreadId_t s_msg_handler_task;
+uint32_t msgTaskBuffer[ 128 * 4 ];
+osStaticThreadDef_t msgTaskControlBlock;
+const osThreadAttr_t msgTask_attributes = {
+  .name = "msgTask",
+  .cb_mem = &msgTaskControlBlock,
+  .cb_size = sizeof(msgTaskControlBlock),
+  .stack_mem = &msgTaskBuffer[0],
+  .stack_size = sizeof(msgTaskBuffer),
+  .priority = (osPriority_t) osPriorityNormal,
+};
+
 static osThreadId_t s_error_handler_task;
+
 // Queues
-static osMessageQueueId_t s_ack_queue;
-static osMessageQueueId_t s_msg_queue;
+typedef StaticQueue_t osStaticMessageQDef_t;
+
+osMessageQueueId_t s_msg_queue;
+uint8_t msg_queue_buffer[ QUEUE_SIZE * sizeof( CANQueueItem ) ];
+osStaticMessageQDef_t msgQueueControlBlock;
+const osMessageQueueAttr_t msgQueue_attributes = {
+  .name = "msgQueue",
+  .cb_mem = &msgQueueControlBlock,
+  .cb_size = sizeof(msgQueueControlBlock),
+  .mq_mem = &msg_queue_buffer,
+  .mq_size = sizeof(msg_queue_buffer)
+};
+
+osMessageQueueId_t s_ack_queue;
+uint8_t ack_queue_buffer[ QUEUE_SIZE * sizeof( CANQueueItem ) ];
+osStaticMessageQDef_t ackQueueControlBlock;
+const osMessageQueueAttr_t ackQueue_attributes = {
+  .name = "ackQueue",
+  .cb_mem = &ackQueueControlBlock,
+  .cb_size = sizeof(ackQueueControlBlock),
+  .mq_mem = &ack_queue_buffer,
+  .mq_size = sizeof(ack_queue_buffer)
+};
+
 static osMessageQueueId_t s_error_queue;
 
 ////////////////////////////////////////
@@ -95,24 +142,14 @@ ErrorCode CANWrapper_Init(const CANWrapper_InitTypeDef *init_struct)
 void RTOS_Init()
 {
 	/* Acknowledgement Thread */
-	s_ack_queue = osMessageQueueNew(QUEUE_SIZE, sizeof(CANQueueItem), NULL);
-	osThreadAttr_t ack_attr = {
-			.name = "CAN ACK Thread",
-			.stack_size = 128 * 4,
-			.priority = (osPriority_t) osPriorityHigh
-	};
-	s_ack_task = osThreadNew(Acknowledgement_Thread, NULL, &ack_attr);
+	s_ack_queue = osMessageQueueNew(QUEUE_SIZE, sizeof(CANQueueItem), &ackQueue_attributes);
+	s_ack_task = osThreadNew(Acknowledgement_Thread, NULL, &ackTask_attributes);
 
 	/* Message Handler Thread */
-	s_msg_queue = osMessageQueueNew(QUEUE_SIZE, sizeof(CANQueueItem), NULL);
-	osThreadAttr_t msg_handler_attr = {
-			.name = "CAN Message Handler Thread",
-			.stack_size = 128 * 4,
-			.priority = (osPriority_t) osPriorityNormal
-	};
-	s_msg_handler_task = osThreadNew(Message_Handler_Thread, NULL, &msg_handler_attr);
+	s_msg_queue = osMessageQueueNew(QUEUE_SIZE, sizeof(CANQueueItem), &msgQueue_attributes);
+	s_msg_handler_task = osThreadNew(Message_Handler_Thread, NULL, &msgTask_attributes);
 
-	/* Error Handler Thread */
+	/* Error Handler Thread TODO: Use static allocation*/
 	s_error_queue = osMessageQueueNew(QUEUE_SIZE, sizeof(CANQueueItem), NULL);
 	osThreadAttr_t error_handler_attr = {
 			.name = "CAN Error Handler Thread",
@@ -350,11 +387,11 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 		ack.msg.recipient = item.msg.sender;
 		ack.msg.sender = item.msg.recipient;
 		ack.msg.is_ack = true;
-		osMessageQueuePut(&s_ack_queue, &ack, 0U, 0U);
+		osMessageQueuePut(s_ack_queue, &ack, 0U, 0U);
 	}
 	if (rx_behaviour | RX_HANDLE)
 	{
-		osMessageQueuePut(&s_msg_queue, &item, 0U, 0U);
+		osMessageQueuePut(s_msg_queue, &item, 0U, 0U);
 	}
 	if (rx_behaviour | RX_CLEAR_TX_STORE && item.msg.is_ack)
 	{
