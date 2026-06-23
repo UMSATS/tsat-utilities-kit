@@ -213,7 +213,7 @@ ErrorCode CANWrapper_Transmit_Raw(CAN_HandleTypeDef *hcan, const CANMessage *msg
 	/* Load the message into a mailbox */
 	uint32_t tx_mailbox;
 	HAL_StatusTypeDef status;
-	status = HAL_CAN_AddTxMessage(hcan, &tx_header, msg->body, &tx_mailbox);
+	status = HAL_CAN_AddTxMessage(hcan, &tx_header, (uint8_t*)&msg->cmd, &tx_mailbox);
 
 	/* Update the TX cache */
 	if (status == HAL_OK && !msg->is_ack && strict_timeout)
