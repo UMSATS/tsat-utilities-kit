@@ -379,7 +379,13 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 	// Let the user define RX behaviour.
 	s_init_struct.rx_callback(item.hcan, &item.msg, &rx_behaviour);
 #endif
+
+	// See if we want to ACK the message.
+#if defined(CWM_API_ADVANCED)
 	if (rx_behaviour | RX_ACK && !item.msg.is_ack)
+#elif defined(CWM_API_STANDARD)
+	if (rx_behaviour | RX_ACK && !item.msg.is_ack && s_init_struct.node_id == item.msg.recipient)
+#endif
 	{
 		// Create an ACK message.
 		CANQueueItem ack;
