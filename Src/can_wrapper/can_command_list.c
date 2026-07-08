@@ -37,6 +37,8 @@ const CmdConfig CMD_CONFIGS[NUM_COMMANDS] = {
 
 		[CMD_CDH_TEST_FLASH]                   ={0, 32},
 		[CMD_CDH_TEST_MRAM]                    ={0, 32},
+		[CMD_CDH_TEST_DHARA]                   ={0, 32},
+		[CMD_CDH_TEST_STORAGEMANAGER]          ={0, 32},
 
 		[CMD_CDH_RESET_SUBSYSTEM]              ={1, 32},
 
