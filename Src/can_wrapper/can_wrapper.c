@@ -382,9 +382,9 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 
 	// See if we want to ACK the message.
 #if defined(CWM_API_ADVANCED)
-	if (rx_behaviour | RX_ACK && !item.msg.is_ack)
+	if (rx_behaviour & RX_ACK && !item.msg.is_ack)
 #elif defined(CWM_API_STANDARD)
-	if (rx_behaviour | RX_ACK && !item.msg.is_ack && s_init_struct.node_id == item.msg.recipient)
+	if (rx_behaviour & RX_ACK && !item.msg.is_ack && s_init_struct.node_id == item.msg.recipient)
 #endif
 	{
 		// Create an ACK message.
@@ -395,11 +395,11 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 		ack.msg.is_ack = true;
 		osMessageQueuePut(s_ack_queue, &ack, 0U, 0U);
 	}
-	if (rx_behaviour | RX_HANDLE)
+	if (rx_behaviour & RX_HANDLE)
 	{
 		osMessageQueuePut(s_msg_queue, &item, 0U, 0U);
 	}
-	if (rx_behaviour | RX_CLEAR_TX_STORE && item.msg.is_ack)
+	if (rx_behaviour & RX_CLEAR_TX_STORE && item.msg.is_ack)
 	{
 		// Clear the corresponding message in the TxCache if it exists.
 		int index = TxCache_Find(&s_tx_cache, &item.msg);
