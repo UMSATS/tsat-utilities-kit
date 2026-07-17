@@ -403,7 +403,7 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 	{
 		// Clear the corresponding message in the TxCache if it exists.
 		int index = TxCache_Find(&s_tx_cache, &item.msg);
-		if (index > 0)
+		if (index >= 0)
 		{
 			TxCache_Erase(&s_tx_cache, index);
 		}
