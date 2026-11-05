@@ -5,7 +5,12 @@
 #include "main.h"
 
 #ifdef UART_PRINT
-extern UART_HandleTypeDef huart2;
+
+#ifndef PRINT_UART_HANDLE
+#define PRINT_UART_HANDLE huart2
+#endif
+
+extern UART_HandleTypeDef PRINT_UART_HANDLE;
 
 
 // This overrides the _write system call to redirect program output to USART2
@@ -15,7 +20,7 @@ extern UART_HandleTypeDef huart2;
 int _write(int file, char *ptr, int len)
 {
     (void)file;
-    HAL_UART_Transmit(&huart2, (uint8_t*)ptr, len, HAL_MAX_DELAY);
+    HAL_UART_Transmit(&PRINT_UART_HANDLE, (uint8_t*)ptr, len, HAL_MAX_DELAY);
     return len;
 }
 
